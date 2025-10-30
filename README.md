@@ -1,15 +1,7 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://placehold.co/1200x400/0d1117/c9d1d9?text=Connect-4%0AA%20Computational%20Game%20Theory%20Implementation&font=montserrat">
-    <source media="(prefers-color-scheme: light)" srcset="https://placehold.co/1200x400/ffffff/1f2328?text=Connect-4%0AA%20Computational%20Game%20Theory%20Implementation&font=montserrat">
-    <img alt="Project Banner" src="https://placehold.co/1200x400/0d1117/c9d1d9?text=Connect-4%0AA%20Computational%20Game%20Theory%20Implementation&font=montserrat">
-  </picture>
-</p>
-
-<h1 align="center">Connect-4: A Computational Game Theory Implementation</h1>
+<h1 align="center">OptiConnect: Connect-4 AI with Non-Blocking Web UI</h1>
 
 <p align="center">
-  <strong>An Advanced Browser-Based Connect-4 Engine with a Non-Blocking Minimax AI, Web Worker Architecture, and Performance Benchmarking Capabilities</strong>
+  <strong>An Advanced Browser-Based Connect-4 Engine with a Non-Blocking Minimax AI, Web Worker Architecture</strong>
 </p>
 
 <p align="center">
@@ -40,8 +32,9 @@ Operating on a game board with a state-space complexity of approximately 4.53 tr
 ### Installation and Execution
 1.  **Clone the Repository:** Procure a local copy of the source code via Git.
     ```bash
-    git clone [https://github.com/CodeKunalTomar/Connect-4.git](https://github.com/CodeKunalTomar/Connect-4.git)
-    cd Connect-4
+    git clone https://github.com/CodeKunalTomar/OptiConenct.git
+    cd OptiConnect
+
     ```
 
 2.  **Initiate a Local Server:** Select a method appropriate for the local development environment.
@@ -169,22 +162,9 @@ The Web Worker architecture fundamentally changes the performance profile of the
 ## X. License and Citation
 This project is licensed under the **MIT License**, granting broad permissions for academic, personal, and commercial use.
 
-### BibTeX Citation
-For academic use, please cite this work as follows:
-```bibtex
-@software{Tomar_Connect-4_2024_Web_Worker,
-  author = {Tomar, Kunal},
-  title = {{Connect-4: A Computational Game Theory Implementation with a Non-Blocking Web Worker Architecture}},
-  year = {2024},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  url = {[https://github.com/CodeKunalTomar/Connect-4](https://github.com/CodeKunalTomar/Connect-4)}
-}
-```
 
----
 <p align="center">
-  <b>Built with a commitment to computational game theory and educational excellence.
+  <b>Built with a commitment to computational game theory
   <br>
   <a href="https://github.com/CodeKunalTomar/Connect-4">⭐ Star this repo</a> | <a href="https://github.com/CodeKunalTomar/Connect-4/fork">🍴 Fork</a> | <a href="https://github.com/CodeKunalTomar/Connect-4/discussions">💬 Discussions</a>
   </b>
