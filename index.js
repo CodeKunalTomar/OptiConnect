@@ -1,37 +1,65 @@
 // constants
 const WEB_WORKER_URL = 'Connect-4.js';
 const BLURBS = {
-    'start': {
+    'start-ai': {
         header: 'Elite AI Challenge',
-        blurb: 'Challenge the AI. Can you be among the 20% who win?'
+        blurb: 'Challenge the Elite AI. Can you be among the 20% who win?'
+    },
+    'start-2player': {
+        header: 'Two Player Mode',
+        blurb: 'Two minds, one board. May the best strategist win!'
     },
     'p1-turn': {
         header: 'Your Turn',
-        blurb: 'Your move. The clock is ticking...'
+        blurb: 'Your move. Clock is ticking...'
+    },
+    'p1-turn-2player': {
+        header: 'Player 1\'s Turn',
+        blurb: 'Your move. Clock is ticking...'
     },
     'p2-turn': {
         header: 'AI\'s Turn',
-        blurb: 'AI is calculating the optimal counter...'
+        blurb: 'AI is calculating...'
+    },
+    'p2-turn-2player': {
+        header: 'Player 2\'s Turn',
+        blurb: 'Your move. Clock is ticking...'
     },
     'p1-win': {
         header: 'You Win!',
-        blurb: 'Incredible! You\'ve defeated the AI! 🏆'
+        blurb: '🏆 Incredible! You defeated the AI!'
+    },
+    'p1-win-2player': {
+        header: 'Player 1 Wins!',
+        blurb: '🏆 Player 1 wins!'
     },
     'p2-win': {
         header: 'AI Wins',
-        blurb: 'The AI wins this round. Analyze and try again!'
+        blurb: 'The AI wins. Analyze and try again!'
+    },
+    'p2-win-2player': {
+        header: 'Player 2 Wins!',
+        blurb: '🏆 Player 2 wins!'
     },
     'tie': {
         header: 'Draw',
-        blurb: 'A draw! You held your ground against the AI.'
+        blurb: 'It\'s a draw!'
     },
-    'timeout-player': {
+    'timeout-p1-ai': {
         header: 'Time\'s Up!',
-        blurb: 'Time\'s up! The AI wins by timeout.'
+        blurb: '⏱️ Time\'s up! You ran out of time.'
     },
-    'timeout-ai': {
-        header: 'You Win!',
-        blurb: 'AI ran out of time! You win! 🏆'
+    'timeout-p2-ai': {
+        header: 'Time\'s Up!',
+        blurb: '⏱️ Time\'s up! AI ran out of time. You win!'
+    },
+    'timeout-p1-2player': {
+        header: 'Time\'s Up!',
+        blurb: '⏱️ Time\'s up! Player 1 ran out of time.'
+    },
+    'timeout-p2-2player': {
+        header: 'Time\'s Up!',
+        blurb: '⏱️ Time\'s up! Player 2 ran out of time.'
     }
 };
 const OUTLOOKS = {
@@ -40,23 +68,31 @@ const OUTLOOKS = {
 };
 
 // Timer constants
-const INITIAL_TIME = 300; // 5 minutes in seconds
-const TIME_INCREMENT = 5; // 5 seconds increment
-const WARNING_THRESHOLD = 30; // Show warning below 30 seconds
+const TOTAL_TIME = 120; // 2 minutes in seconds
+const WARNING_TIME = 30; // Yellow/orange warning
+const CRITICAL_TIME = 10; // Red critical warning
 
 // global variables
 const worker = new Worker(WEB_WORKER_URL);
-let playerTime = INITIAL_TIME;
-let aiTime = INITIAL_TIME;
+let player1Time = TOTAL_TIME;
+let player2Time = TOTAL_TIME;
 let timerInterval = null;
-let activeTimer = null; // 'player' or 'ai'
+let activeTimer = null; // 1, 2, or null
 let gameInProgress = false;
+let gameMode = 'ai'; // 'ai' or '2player'
 
 // document ready
 $(function() {
+    // Mode selection handlers
+    $('.mode-btn').on('click', function() {
+        $('.mode-btn').removeClass('selected');
+        $(this).addClass('selected');
+        gameMode = $(this).data('mode');
+        updateStartBlurb();
+    });
+    
     $('.start-button').on('click', startGame);
-    setBlurb('start');
-    setOutlook();
+    updateStartBlurb();
     updateTimerDisplay();
 
     worker.addEventListener('message', function(e) {
@@ -66,6 +102,9 @@ $(function() {
                 break;
             case 'human-move-done':
                 endHumanTurn(e.data.coords, e.data.isWin, e.data.winningChips, e.data.isBoardFull);
+                break;
+            case 'player2-move-done':
+                endPlayer2Turn(e.data.coords, e.data.isWin, e.data.winningChips, e.data.isBoardFull);
                 break;
             case 'progress':
                 updateComputerTurn(e.data.col);
@@ -78,6 +117,14 @@ $(function() {
     }, false);
 });
 
+function updateStartBlurb() {
+    if (gameMode === 'ai') {
+        setBlurb('start-ai');
+    } else {
+        setBlurb('start-2player');
+    }
+}
+
 // Timer functions
 function formatTime(seconds) {
     const mins = Math.floor(seconds / 60);
@@ -86,41 +133,66 @@ function formatTime(seconds) {
 }
 
 function updateTimerDisplay() {
-    const $playerTimer = $('#player-timer');
-    const $aiTimer = $('#ai-timer');
+    const $player1Timer = $('.timer-p1');
+    const $player2Timer = $('.timer-p2');
+    
+    // Update labels based on game mode
+    if (gameMode === 'ai') {
+        $player1Timer.find('.timer-label').text('YOU');
+        $player2Timer.find('.timer-label').text('AI');
+    } else {
+        $player1Timer.find('.timer-label').text('PLAYER 1');
+        $player2Timer.find('.timer-label').text('PLAYER 2');
+    }
     
     // Update timer values
-    $playerTimer.find('.timer-value').text(formatTime(playerTime));
-    $aiTimer.find('.timer-value').text(formatTime(aiTime));
+    $player1Timer.find('.timer-value').text(formatTime(player1Time));
+    $player2Timer.find('.timer-value').text(formatTime(player2Time));
     
     // Update active state
-    $playerTimer.toggleClass('active', activeTimer === 'player');
-    $aiTimer.toggleClass('active', activeTimer === 'ai');
+    $player1Timer.toggleClass('active', activeTimer === 1);
+    $player2Timer.toggleClass('active', activeTimer === 2);
     
-    // Update warning state
-    $playerTimer.toggleClass('warning', playerTime > 0 && playerTime < WARNING_THRESHOLD);
-    $aiTimer.toggleClass('warning', aiTime > 0 && aiTime < WARNING_THRESHOLD);
+    // Update warning and critical states for Player 1
+    $player1Timer.removeClass('warning critical');
+    if (player1Time > 0 && player1Time <= CRITICAL_TIME) {
+        $player1Timer.addClass('critical');
+    } else if (player1Time > 0 && player1Time <= WARNING_TIME) {
+        $player1Timer.addClass('warning');
+    }
+    
+    // Update warning and critical states for Player 2
+    $player2Timer.removeClass('warning critical');
+    if (player2Time > 0 && player2Time <= CRITICAL_TIME) {
+        $player2Timer.addClass('critical');
+    } else if (player2Time > 0 && player2Time <= WARNING_TIME) {
+        $player2Timer.addClass('warning');
+    }
 }
 
-function startTimer(who) {
+function startTimer(player) {
     stopTimer();
-    activeTimer = who;
+    activeTimer = player;
     updateTimerDisplay();
     
     timerInterval = setInterval(() => {
-        if (activeTimer === 'player') {
-            playerTime--;
-            if (playerTime <= 0) {
-                playerTime = 0;
+        if (activeTimer === 1) {
+            player1Time--;
+            if (player1Time <= 0) {
+                player1Time = 0;
                 stopTimer();
-                endGame('timeout-player');
+                const timeoutKey = gameMode === 'ai' ? 'timeout-p1-ai' : 'timeout-p1-2player';
+                endGame(timeoutKey);
+                return;
             }
-        } else if (activeTimer === 'ai') {
-            aiTime--;
-            if (aiTime <= 0) {
-                aiTime = 0;
+        } else if (activeTimer === 2) {
+            player2Time--;
+            if (player2Time <= 0) {
+                player2Time = 0;
                 stopTimer();
-                endGame('timeout-ai');
+                const timeoutKey = gameMode === 'ai' ? 'timeout-p2-ai' : 'timeout-p2-2player';
+                endGame(timeoutKey);
+                return;
             }
         }
         updateTimerDisplay();
@@ -136,12 +208,11 @@ function stopTimer() {
     updateTimerDisplay();
 }
 
-function addIncrement(who) {
-    if (who === 'player') {
-        playerTime += TIME_INCREMENT;
-    } else if (who === 'ai') {
-        aiTime += TIME_INCREMENT;
-    }
+function resetTimers() {
+    stopTimer();
+    player1Time = TOTAL_TIME;
+    player2Time = TOTAL_TIME;
+    activeTimer = null;
     updateTimerDisplay();
 }
 function setBlurb(key) {
@@ -162,10 +233,11 @@ function setOutlook(key) {
 
 function startGame() {
     // Reset timers
-    playerTime = INITIAL_TIME;
-    aiTime = INITIAL_TIME;
-    stopTimer();
-    updateTimerDisplay();
+    resetTimers();
+    
+    // Show timer panel, hide setup panel
+    $('.timer-panel').show();
+    $('.setup-panel').hide();
     
     $('.start-panel').addClass('freeze');
     $('.lit-cells, .chips').empty();
@@ -177,11 +249,15 @@ function startGame() {
 }
 
 function startHumanTurn() {
-    setBlurb('p1-turn');
+    if (gameMode === 'ai') {
+        setBlurb('p1-turn');
+    } else {
+        setBlurb('p1-turn-2player');
+    }
     $('.click-columns div').addClass('hover');
     
-    // Start player timer
-    startTimer('player');
+    // Start player 1 timer
+    startTimer(1);
 
     // if mouse is already over a column, show cursor chip there
     const col = $('.click-columns div:hover').index();
@@ -220,18 +296,25 @@ function endHumanTurn(coords, isWin, winningChips, isBoardFull) {
         // column was full, human goes again
         startHumanTurn();
     } else {
-        // Stop player timer and add increment
+        // Stop player 1 timer (no increment in cumulative timer mode)
         stopTimer();
-        addIncrement('player');
         
         dropCursorChip(coords.row, function() {
             if(isWin) {
-                endGame('p1-win', winningChips);
+                if (gameMode === 'ai') {
+                    endGame('p1-win', winningChips);
+                } else {
+                    endGame('p1-win-2player', winningChips);
+                }
             } else if(isBoardFull) {
                 endGame('tie');
             } else {
-                // pass turn to computer
-                startComputerTurn();
+                // pass turn to player 2 or computer
+                if (gameMode === 'ai') {
+                    startComputerTurn();
+                } else {
+                    startPlayer2Turn();
+                }
             }
         });
     }
@@ -244,9 +327,9 @@ function startComputerTurn() {
     createCursorChip(2, 0);
     
     // Start AI timer
-    startTimer('ai');
+    startTimer(2);
 
-    const maxDepth = 9; // Fixed high depth for elite AI (was user-selectable)
+    const maxDepth = 9; // Fixed high depth for elite AI
     worker.postMessage({
         messageType: 'computer-move',
         maxDepth: maxDepth
@@ -258,14 +341,15 @@ function updateComputerTurn(col) {
 }
 
 function endComputerTurn(coords, isWin, winningChips, isBoardFull, isWinImminent, isLossImminent) {
-    // Stop AI timer and add increment
+    // Stop AI timer (no increment in cumulative timer mode)
     stopTimer();
-    addIncrement('ai');
     
     moveCursorChip(coords.col, function() {
         dropCursorChip(coords.row, function() {
             if (isWin) {
-                endGame('p2-win', winningChips);
+                // In Two-Player mode, use two-player win message; in AI mode, use AI win message
+                const winKey = gameMode === '2player' ? 'p2-win-2player' : 'p2-win';
+                endGame(winKey, winningChips);
             } else if (isBoardFull) {
                 endGame('tie');
             } else {
@@ -284,9 +368,73 @@ function endComputerTurn(coords, isWin, winningChips, isBoardFull, isWinImminent
     });
 }
 
+function startPlayer2Turn() {
+    setBlurb('p2-turn-2player');
+    $('.click-columns div').addClass('hover');
+    
+    // Start player 2 timer
+    startTimer(2);
+
+    // if mouse is already over a column, show cursor chip there
+    const col = $('.click-columns div:hover').index();
+    if(col !== -1) {
+        createCursorChip(2, col);
+    }
+
+    $('.click-columns')
+        .on('mouseenter', function() {
+            const col = $('.click-columns div:hover').index();
+            createCursorChip(2, col);
+        })
+        .on('mouseleave', function() {
+            destroyCursorChip();
+        });
+
+    $('.click-columns div')
+        .on('mouseenter', function() {
+            const col = $(this).index();
+            moveCursorChip(col);
+        })
+        .on('click', function() {
+            $('.click-columns, .click-columns div').off();
+
+            const col = $(this).index();
+            worker.postMessage({
+                messageType: 'player2-move',
+                col: col
+            });
+        });
+}
+
+function endPlayer2Turn(coords, isWin, winningChips, isBoardFull) {
+    $('.click-columns div').removeClass('hover');
+    if(!coords) {
+        // column was full, player 2 goes again
+        startPlayer2Turn();
+    } else {
+        // Stop player 2 timer (no increment in cumulative timer mode)
+        stopTimer();
+        
+        dropCursorChip(coords.row, function() {
+            if(isWin) {
+                endGame('p2-win-2player', winningChips);
+            } else if(isBoardFull) {
+                endGame('tie');
+            } else {
+                // pass turn back to player 1
+                startHumanTurn();
+            }
+        });
+    }
+}
+
 function endGame(blurbKey, winningChips) {
     stopTimer();
     gameInProgress = false;
+    
+    // Show setup panel again, hide timer panel
+    $('.timer-panel').hide();
+    $('.setup-panel').show();
     
     $('.start-panel').removeClass('freeze');
     setBlurb(blurbKey);
