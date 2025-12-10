@@ -19,6 +19,7 @@ const BOARD_WIDTH = TOTAL_COLUMNS;
 const OPENING_BOOK = {
     '': 3, // First move - always play center column
 };
+const MAX_OPENING_MOVES = 2; // Only use opening book for first 2 moves
 
 // Column ordering for move ordering (center columns first for better alpha-beta pruning)
 const COLUMN_ORDER = [3, 2, 4, 1, 5, 0, 6];
@@ -288,7 +289,7 @@ function getBoardStateKey(gameState) {
     }
     
     // Only use opening book for first few moves
-    if (moveCount > 2) return null;
+    if (moveCount > MAX_OPENING_MOVES) return null;
     
     for (let col = 0; col < TOTAL_COLUMNS; col++) {
         for (let row = 0; row < gameState.board[col].length; row++) {
@@ -346,12 +347,11 @@ function makeComputerMove(maxDepth) {
     
     // Check opening book first
     const boardKey = getBoardStateKey(currentGameState);
-    if (boardKey !== null && OPENING_BOOK.hasOwnProperty(boardKey)) {
-        col = OPENING_BOOK[boardKey];
+    if (boardKey !== null && boardKey in OPENING_BOOK) {
+        const openingCol = OPENING_BOOK[boardKey];
         // Verify move is valid
-        if (currentGameState.bitboard.heights[col] >= TOTAL_ROWS) {
-            // Opening book move is invalid, fall through to regular search
-            col = undefined;
+        if (currentGameState.bitboard.heights[openingCol] < TOTAL_ROWS) {
+            col = openingCol;
         }
     }
     
