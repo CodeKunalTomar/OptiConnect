@@ -11,33 +11,18 @@
         <div class = "content">
             <div class = "sidebar">
                 <h1>Connect-4</h1>
-                <div class = "panel dif">
-                    <h2> Difficulty </h2>
-                    <div class = "dif-options">
-                        <div>
-                            <input id = "dif1" type = "radio" name = "dif-options" value = "1">
-                            <label for = "dif1"> 1 </label>
-                        </div>
-                        <div>
-                            <input id = "dif2" type = "radio" name = "dif-options" value = "2">
-                            <label for = "dif2"> 2 </label>
-                        </div>
-                        <div>
-                            <input id = "dif3" type = "radio" name = "dif-options" value = "3" checked>
-                            <label for = "dif3"> 3 </label>
-                        </div>
-                        <div>
-                            <input id = "dif4" type = "radio" name = "dif-options" value = "4">
-                            <label for = "dif4"> 4 </label>
-                        </div>
-                        <div>
-                            <input id = "dif5" type = "radio" name = "dif-options" value = "5">
-                            <label for = "dif5"> 5 </label>
-                        </div>
+                <div class = "panel timer-panel">
+                    <div class = "timer" id = "player-timer">
+                        <div class = "timer-label">YOU</div>
+                        <div class = "timer-value">5:00</div>
                     </div>
-                    <div class = "start">
-                        <button> Start Game </button>
+                    <div class = "timer" id = "ai-timer">
+                        <div class = "timer-label">AI</div>
+                        <div class = "timer-value">5:00</div>
                     </div>
+                </div>
+                <div class = "panel start-panel">
+                    <button class = "start-button"> Start Game </button>
                 </div>
                 <div class = "panel info">
                     <h2></h2>

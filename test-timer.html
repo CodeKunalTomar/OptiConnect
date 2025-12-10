@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timer Test</title>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
+        .timer { background: rgba(255,255,255,0.1); padding: 15px; margin: 10px; border-radius: 8px; }
+        .timer.active { border: 2px solid #4CAF50; box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); }
+        .timer.warning { border: 2px solid #f44336; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    </style>
+</head>
+<body>
+    <h1>Timer Test</h1>
+    <div id="player-timer" class="timer active">
+        <div>YOU</div>
+        <div class="timer-value">5:00</div>
+    </div>
+    <div id="ai-timer" class="timer">
+        <div>AI</div>
+        <div class="timer-value">5:00</div>
+    </div>
+    <button onclick="testWarning()">Test Warning State</button>
+    <button onclick="testActive()">Toggle Active</button>
+    <script>
+        function testWarning() {
+            document.getElementById('player-timer').classList.add('warning');
+        }
+        function testActive() {
+            document.getElementById('player-timer').classList.toggle('active');
+            document.getElementById('ai-timer').classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

@@ -15,6 +15,18 @@ const MAX_TT_SIZE = 1000000; // Max entries in transposition table
 const BOARD_HEIGHT = TOTAL_ROWS + 1; // Extra row for overflow detection
 const BOARD_WIDTH = TOTAL_COLUMNS;
 
+// Opening book - prioritize center column
+const OPENING_BOOK = {
+    '': 3, // First move - always play center column
+};
+
+// Column ordering for move ordering (center columns first for better alpha-beta pruning)
+const COLUMN_ORDER = [3, 2, 4, 1, 5, 0, 6];
+
+// Position evaluation weights
+const CENTER_COLUMN_WEIGHT = 3;
+const CENTER_ADJACENT_WEIGHT = 2;
+
 // Initialize Zobrist hashing table (random 64-bit values for each position and player)
 const zobristTable = [];
 function initZobrist() {
@@ -239,6 +251,53 @@ GameState.prototype.getPlayerForChipAt = function(col, row) {
     return player;
 }
 
+// Evaluate position heuristically for non-terminal positions
+GameState.prototype.evaluatePosition = function(player) {
+    let score = 0;
+    
+    // Center control - pieces in center columns are more valuable
+    for (let row = 0; row < this.bitboard.heights[3]; row++) {
+        if (this.board[3][row] === player) {
+            score += CENTER_COLUMN_WEIGHT;
+        } else if (this.board[3][row] !== undefined) {
+            score -= CENTER_COLUMN_WEIGHT;
+        }
+    }
+    
+    // Adjacent to center also valuable
+    for (let col of [2, 4]) {
+        for (let row = 0; row < this.bitboard.heights[col]; row++) {
+            if (this.board[col][row] === player) {
+                score += CENTER_ADJACENT_WEIGHT;
+            } else if (this.board[col][row] !== undefined) {
+                score -= CENTER_ADJACENT_WEIGHT;
+            }
+        }
+    }
+    
+    // Normalize score to be within minimax range
+    return score * 0.1;
+}
+
+// Get a simple board state hash for opening book lookup
+function getBoardStateKey(gameState) {
+    let key = '';
+    let moveCount = 0;
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        moveCount += gameState.board[col].length;
+    }
+    
+    // Only use opening book for first few moves
+    if (moveCount > 2) return null;
+    
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        for (let row = 0; row < gameState.board[col].length; row++) {
+            key += col + '' + gameState.board[col][row];
+        }
+    }
+    return key;
+}
+
 // listen for messages from the main thread
 self.addEventListener('message', function(e) {
     switch(e.data.messageType) {
@@ -285,27 +344,41 @@ function makeComputerMove(maxDepth) {
     let isWinImminent = false;
     let isLossImminent = false;
     
-    for (let depth = 0; depth <= maxDepth; depth++) {
-        const origin = new GameState(currentGameState);
-        const isTopLevel = (depth === maxDepth);
+    // Check opening book first
+    const boardKey = getBoardStateKey(currentGameState);
+    if (boardKey !== null && OPENING_BOOK.hasOwnProperty(boardKey)) {
+        col = OPENING_BOOK[boardKey];
+        // Verify move is valid
+        if (currentGameState.bitboard.heights[col] >= TOTAL_ROWS) {
+            // Opening book move is invalid, fall through to regular search
+            col = undefined;
+        }
+    }
+    
+    if (col === undefined) {
+        // Use iterative deepening with fixed high depth
+        for (let depth = 0; depth <= maxDepth; depth++) {
+            const origin = new GameState(currentGameState);
+            const isTopLevel = (depth === maxDepth);
 
-        // Alpha-beta search with initial bounds
-        const tentativeCol = think(origin, 2, depth, isTopLevel, -Infinity, Infinity);
-        
-        if (origin.score === HUMAN_WIN_SCORE) {
-            // AI realizes it can lose, thinks all moves suck now, keep move picked at previous depth
-            // this solves the "apathy" problem
-            isLossImminent = true;
-            break;
-        } else if (origin.score === COMPUTER_WIN_SCORE) {
-            // AI knows how to win, no need to think deeper, use this move
-            // this solves the "cocky" problem
-            col = tentativeCol;
-            isWinImminent = true;
-            break;
-        } else {
-            // go with this move, for now at least
-            col = tentativeCol;
+            // Alpha-beta search with initial bounds
+            const tentativeCol = think(origin, 2, depth, isTopLevel, -Infinity, Infinity);
+            
+            if (origin.score === HUMAN_WIN_SCORE) {
+                // AI realizes it can lose, thinks all moves suck now, keep move picked at previous depth
+                // this solves the "apathy" problem
+                isLossImminent = true;
+                break;
+            } else if (origin.score === COMPUTER_WIN_SCORE) {
+                // AI knows how to win, no need to think deeper, use this move
+                // this solves the "cocky" problem
+                col = tentativeCol;
+                isWinImminent = true;
+                break;
+            } else {
+                // go with this move, for now at least
+                col = tentativeCol;
+            }
         }
     }
 
@@ -350,13 +423,14 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
         }
     }
     
-    let col;
     let scoreSet = false;
     const childNodes = [];
     let bestMove = -1;
 
-    // consider each column as a potential move
-    for (col = 0; col < TOTAL_COLUMNS; col++) {
+    // Use column ordering for better alpha-beta pruning (center columns first)
+    for (let colIdx = 0; colIdx < COLUMN_ORDER.length; colIdx++) {
+        const col = COLUMN_ORDER[colIdx];
+        
         if(isTopLevel) {
             self.postMessage({
                 messageType: 'progress',
@@ -376,6 +450,10 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
                 // no game stopping win and there are still recursions to make, think deeper
                 const nextPlayer = (player === 1) ? 2 : 1;
                 think(childNode, nextPlayer, recursionsRemaining - 1, false, alpha, beta);
+            } else if (!childNode.isWin() && recursionsRemaining === 0) {
+                // At leaf node, apply heuristic evaluation
+                const heuristicScore = childNode.evaluatePosition(2); // Evaluate for computer
+                childNode.score = heuristicScore;
             }
 
             if (!scoreSet) {
@@ -433,7 +511,7 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
     // For non-top level, just return the best move (may have been pruned)
     if (isTopLevel) {
         const candidates = [];
-        for (col = 0; col < TOTAL_COLUMNS; col++) {
+        for (let col = 0; col < TOTAL_COLUMNS; col++) {
             if (childNodes[col] !== undefined && childNodes[col].score === node.score) {
                 candidates.push(col);
             }
