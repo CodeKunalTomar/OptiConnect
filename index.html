@@ -11,19 +11,38 @@
         <div class = "content">
             <div class = "sidebar">
                 <h1>Connect-4</h1>
-                <div class = "panel timer-panel">
-                    <div class = "timer" id = "player-timer">
+                
+                <!-- Timer Panel (shown during game) -->
+                <div class = "panel timer-panel" style="display: none;">
+                    <div class = "timer timer-p1" id = "player-timer">
                         <div class = "timer-label">YOU</div>
-                        <div class = "timer-value">5:00</div>
+                        <div class = "timer-value">2:00</div>
                     </div>
-                    <div class = "timer" id = "ai-timer">
+                    <div class = "timer timer-p2" id = "ai-timer">
                         <div class = "timer-label">AI</div>
-                        <div class = "timer-value">5:00</div>
+                        <div class = "timer-value">2:00</div>
                     </div>
                 </div>
+                
+                <!-- Game Setup Panel (shown before game) -->
+                <div class = "panel setup-panel">
+                    <h2>Game Mode</h2>
+                    <div class = "mode-select">
+                        <button class = "mode-btn selected" data-mode="ai">
+                            <span class = "icon">🤖</span>
+                            <span>VS AI</span>
+                        </button>
+                        <button class = "mode-btn" data-mode="2player">
+                            <span class = "icon">👥</span>
+                            <span>2 Player</span>
+                        </button>
+                    </div>
+                </div>
+                
                 <div class = "panel start-panel">
                     <button class = "start-button"> Start Game </button>
                 </div>
+                
                 <div class = "panel info">
                     <h2></h2>
                     <div class = "blurb"></div>

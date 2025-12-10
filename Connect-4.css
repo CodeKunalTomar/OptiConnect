@@ -55,51 +55,117 @@ h2 {
     border-radius: 8px;
 }
 
+/* Setup Panel - Mode Selection */
+.setup-panel h2 {
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.mode-select {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 0;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 15px 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px solid #666;
+    border-radius: 8px;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-family: "Doppio One", sans-serif;
+    font-size: 14px;
+}
+
+.mode-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #999;
+}
+
+.mode-btn.selected {
+    background-color: #593f6b;
+    border-color: #fff;
+    color: #fff;
+}
+
+.mode-btn .icon {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.mode-btn:focus {
+    outline: none;
+}
+
 /* Timer Panel */
 .timer-panel {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 15px;
+    gap: 8px;
+    padding: 12px;
 }
 
 .timer {
-    padding: 15px;
+    padding: 12px;
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    font-family: "Doppio One", monospace;
-    text-align: center;
     border: 2px solid transparent;
     transition: all 0.3s ease;
-}
-
-.timer.active {
-    border-color: #4CAF50;
-    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
-    background-color: rgba(76, 175, 80, 0.2);
-}
-
-.timer.warning {
-    border-color: #f44336;
-    background-color: rgba(244, 67, 54, 0.2);
-    animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .timer-label {
     font-size: 14px;
     color: #aaa;
-    margin-bottom: 5px;
+    font-family: "Doppio One", sans-serif;
 }
 
 .timer-value {
-    font-size: 32px;
+    font-size: 24px;
+    font-family: "Courier New", monospace;
     color: #fff;
     font-weight: bold;
+}
+
+.timer.active {
+    border-color: #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
+    background-color: rgba(76, 175, 80, 0.15);
+}
+
+.timer.active .timer-label {
+    color: #4CAF50;
+}
+
+.timer.warning {
+    border-color: #ff9800;
+    background-color: rgba(255, 152, 0, 0.15);
+}
+
+.timer.warning .timer-value {
+    color: #ff9800;
+}
+
+.timer.critical {
+    border-color: #f44336;
+    background-color: rgba(244, 67, 54, 0.15);
+    animation: pulse-critical 0.5s infinite;
+}
+
+.timer.critical .timer-value {
+    color: #f44336;
+}
+
+@keyframes pulse-critical {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 /* Start Panel */

@@ -308,6 +308,9 @@ self.addEventListener('message', function(e) {
         case 'human-move':
             makeHumanMove(e.data.col);
             break;
+        case 'player2-move':
+            makePlayer2Move(e.data.col);
+            break;
         case 'computer-move':
             makeComputerMove(e.data.maxDepth);
             break;
@@ -333,6 +336,21 @@ function makeHumanMove(col) {
     const isBoardFull = currentGameState.isBoardFull();
     self.postMessage({
         messageType: 'human-move-done',
+        coords: coords,
+        isWin: isWin,
+        winningChips: winningChips,
+        isBoardFull: isBoardFull
+    });
+}
+
+function makePlayer2Move(col) {
+    // coords is undefined if the move is invalid (column is full)
+    const coords = currentGameState.makeMove(2, col);
+    const isWin = currentGameState.isWin();
+    const winningChips = currentGameState.winningChips;
+    const isBoardFull = currentGameState.isBoardFull();
+    self.postMessage({
+        messageType: 'player2-move-done',
         coords: coords,
         isWin: isWin,
         winningChips: winningChips,
