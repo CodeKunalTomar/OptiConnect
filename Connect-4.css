@@ -55,62 +55,62 @@ h2 {
     border-radius: 8px;
 }
 
-.dif-options {
-    clear: both;
-    overflow: hidden;
-    margin: 20px -7px 0;
+/* Timer Panel */
+.timer-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
 }
 
-.dif-options div {
-    float: left;
-    width: 20%;
-}
-
-.dif-options input {
-    display: none;
-}
-
-.dif-options input:checked+label {
-    color: #fff;
-    background-color: #593f6b;
-    border-color: #fff;
-    cursor: default;
-}
-
-.dif-options label {
-    display: block;
-    margin: 0 auto;
-    width: 24px;
-    height: 24px;
-    background-color: #666;
-    border: solid 2px #ccc;
+.timer {
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: #999;
+    font-family: "Doppio One", monospace;
     text-align: center;
-    line-height: 24px;
-    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
 }
 
-.freeze .dif-options input:not(:checked)+label {
-    font-size: 0;
-    margin: 7px auto;
-    width: 10px;
-    height: 10px;
-    border-radius: 4px;
-    color: transparent;
-    line-height: 10px;
-    cursor: default;
-    transition: .2s
+.timer.active {
+    border-color: #4CAF50;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+    background-color: rgba(76, 175, 80, 0.2);
 }
 
-.start {
-    margin-top: 20px;
+.timer.warning {
+    border-color: #f44336;
+    background-color: rgba(244, 67, 54, 0.2);
+    animation: pulse 1s infinite;
 }
 
-.start button {
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.timer-label {
+    font-size: 14px;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+.timer-value {
+    font-size: 32px;
+    color: #fff;
+    font-weight: bold;
+}
+
+/* Start Panel */
+.start-panel {
+    padding: 12px;
+}
+
+.start-button {
     display: block;
     width: 100%;
-    padding: 2px 12px 4px;
+    padding: 8px 12px;
     font-family: inherit;
     font-size: 24px;
     border: solid 2px #ccc;
@@ -118,13 +118,19 @@ h2 {
     background-color: #593f6b;
     color: #fff;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
-.start button:focus {
+.start-button:hover {
+    background-color: #6d4d82;
+    transform: scale(1.02);
+}
+
+.start-button:focus {
     outline: none;
 }
 
-.freeze .start {
+.start-panel.freeze .start-button {
     display: none;
 }
 

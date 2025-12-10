@@ -1,0 +1,16 @@
+# Test files
+test-*.html
+test-*.js
+
+# macOS
+.DS_Store
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Logs
+*.log
