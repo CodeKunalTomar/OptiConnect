@@ -45,11 +45,19 @@ const BLURBS = {
         header: 'Draw',
         blurb: 'It\'s a draw!'
     },
-    'timeout-p1': {
+    'timeout-p1-ai': {
+        header: 'Time\'s Up!',
+        blurb: '⏱️ Time\'s up! You ran out of time.'
+    },
+    'timeout-p2-ai': {
+        header: 'Time\'s Up!',
+        blurb: '⏱️ Time\'s up! AI ran out of time. You win!'
+    },
+    'timeout-p1-2player': {
         header: 'Time\'s Up!',
         blurb: '⏱️ Time\'s up! Player 1 ran out of time.'
     },
-    'timeout-p2': {
+    'timeout-p2-2player': {
         header: 'Time\'s Up!',
         blurb: '⏱️ Time\'s up! Player 2 ran out of time.'
     }
@@ -173,7 +181,8 @@ function startTimer(player) {
             if (player1Time <= 0) {
                 player1Time = 0;
                 stopTimer();
-                endGame('timeout-p1');
+                const timeoutKey = gameMode === 'ai' ? 'timeout-p1-ai' : 'timeout-p1-2player';
+                endGame(timeoutKey);
                 return;
             }
         } else if (activeTimer === 2) {
@@ -181,7 +190,8 @@ function startTimer(player) {
             if (player2Time <= 0) {
                 player2Time = 0;
                 stopTimer();
-                endGame('timeout-p2');
+                const timeoutKey = gameMode === 'ai' ? 'timeout-p2-ai' : 'timeout-p2-2player';
+                endGame(timeoutKey);
                 return;
             }
         }
@@ -337,7 +347,9 @@ function endComputerTurn(coords, isWin, winningChips, isBoardFull, isWinImminent
     moveCursorChip(coords.col, function() {
         dropCursorChip(coords.row, function() {
             if (isWin) {
-                endGame('p2-win', winningChips);
+                // In Two-Player mode, use two-player win message; in AI mode, use AI win message
+                const winKey = gameMode === '2player' ? 'p2-win-2player' : 'p2-win';
+                endGame(winKey, winningChips);
             } else if (isBoardFull) {
                 endGame('tie');
             } else {
