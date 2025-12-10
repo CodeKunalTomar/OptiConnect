@@ -19,13 +19,20 @@ const BOARD_WIDTH = TOTAL_COLUMNS;
 const zobristTable = [];
 function initZobrist() {
     zobristTable.length = 0;
+    // Use a simple seeded random number generator for better distribution
+    let seed = 12345n;
+    const next = () => {
+        seed = (seed * 48271n) % 2147483647n;
+        return seed;
+    };
+    
     for (let col = 0; col < TOTAL_COLUMNS; col++) {
         zobristTable[col] = [];
         for (let row = 0; row < TOTAL_ROWS; row++) {
             zobristTable[col][row] = [];
-            // Generate random 64-bit values for each player
-            zobristTable[col][row][1] = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
-            zobristTable[col][row][2] = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
+            // Generate pseudo-random 64-bit values for each player
+            zobristTable[col][row][1] = (next() << 32n) | next();
+            zobristTable[col][row][2] = (next() << 32n) | next();
         }
     }
 }
@@ -318,6 +325,10 @@ function makeComputerMove(maxDepth) {
 }
 
 function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
+    // Store original bounds for transposition table flag determination
+    const origAlpha = alpha;
+    const origBeta = beta;
+    
     // Check transposition table
     const hash = node.bitboard.hash;
     const ttEntry = transpositionTable.get(hash);
@@ -401,9 +412,10 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
     // Store in transposition table (with size limit)
     if (transpositionTable.size < MAX_TT_SIZE) {
         let flag;
-        if (node.score <= alpha) {
+        // Use original bounds to determine flag type
+        if (node.score <= origAlpha) {
             flag = TT_UPPERBOUND;
-        } else if (node.score >= beta) {
+        } else if (node.score >= origBeta) {
             flag = TT_LOWERBOUND;
         } else {
             flag = TT_EXACT;
@@ -417,12 +429,17 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
         });
     }
 
-    // collect all moves tied for best move and randomly pick one
-    const candidates = [];
-    for (col = 0; col < TOTAL_COLUMNS; col++) {
-        if (childNodes[col] !== undefined && childNodes[col].score === node.score) {
-            candidates.push(col);
+    // For top level, collect all moves tied for best move and randomly pick one
+    // For non-top level, just return the best move (may have been pruned)
+    if (isTopLevel) {
+        const candidates = [];
+        for (col = 0; col < TOTAL_COLUMNS; col++) {
+            if (childNodes[col] !== undefined && childNodes[col].score === node.score) {
+                candidates.push(col);
+            }
         }
+        return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : bestMove;
     }
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    
+    return bestMove;
 }
