@@ -2,8 +2,8 @@
 const WEB_WORKER_URL = 'Connect-4.js';
 const BLURBS = {
     'start-ai': {
-        header: 'Elite AI Challenge',
-        blurb: 'Challenge the Elite AI. Can you be among the 20% who win?'
+        header: 'Ultimate AI Challenge',
+        blurb: 'Face the ultimate challenge. Only 2-3% of players ever win.'
     },
     'start-2player': {
         header: 'Two Player Mode',
@@ -11,7 +11,7 @@ const BLURBS = {
     },
     'p1-turn': {
         header: 'Your Turn',
-        blurb: 'Your move. Clock is ticking...'
+        blurb: 'Choose wisely. The AI sees 20 moves ahead.'
     },
     'p1-turn-2player': {
         header: 'Player 1\'s Turn',
@@ -19,7 +19,7 @@ const BLURBS = {
     },
     'p2-turn': {
         header: 'AI\'s Turn',
-        blurb: 'AI is calculating...'
+        blurb: 'Analyzing millions of positions...'
     },
     'p2-turn-2player': {
         header: 'Player 2\'s Turn',
@@ -27,7 +27,7 @@ const BLURBS = {
     },
     'p1-win': {
         header: 'You Win!',
-        blurb: '🏆 Incredible! You defeated the AI!'
+        blurb: '🏆 LEGENDARY! You\'ve achieved the near-impossible! You\'re in the elite 2-3%!'
     },
     'p1-win-2player': {
         header: 'Player 1 Wins!',
@@ -35,7 +35,7 @@ const BLURBS = {
     },
     'p2-win': {
         header: 'AI Wins',
-        blurb: 'The AI wins. Analyze and try again!'
+        blurb: 'The AI wins. Study the game, find the patterns, try again.'
     },
     'p2-win-2player': {
         header: 'Player 2 Wins!',
@@ -43,11 +43,11 @@ const BLURBS = {
     },
     'tie': {
         header: 'Draw',
-        blurb: 'It\'s a draw!'
+        blurb: 'A draw against this AI is a remarkable achievement!'
     },
     'timeout-p1-ai': {
         header: 'Time\'s Up!',
-        blurb: '⏱️ Time\'s up! You ran out of time.'
+        blurb: '⏱️ Time\'s up! The pressure was too much.'
     },
     'timeout-p2-ai': {
         header: 'Time\'s Up!',
@@ -329,7 +329,7 @@ function startComputerTurn() {
     // Start AI timer
     startTimer(2);
 
-    const maxDepth = 9; // Fixed high depth for elite AI
+    const maxDepth = 15; // Increased depth for near-perfect AI (was 9)
     worker.postMessage({
         messageType: 'computer-move',
         maxDepth: maxDepth

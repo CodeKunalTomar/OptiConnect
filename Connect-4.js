@@ -15,11 +15,36 @@ const MAX_TT_SIZE = 1000000; // Max entries in transposition table
 const BOARD_HEIGHT = TOTAL_ROWS + 1; // Extra row for overflow detection
 const BOARD_WIDTH = TOTAL_COLUMNS;
 
-// Opening book - prioritize center column
+// ============================================================================
+// OPENING BOOK - Pre-computed optimal moves for first 10-15 ply
+// ============================================================================
+// Opening book - maps board state to optimal move (center column is always best first move)
 const OPENING_BOOK = {
-    '': 3, // First move - always play center column
+    // Empty board - always play center (column 3)
+    '': 3,
+    
+    // Human plays first - AI responds with center
+    '01': 3, '11': 3, '21': 3, '31': 3, '41': 3, '51': 3, '61': 3,
+    
+    // Human center (31), AI center (32) - human's second move responses
+    '3132': 3, '0132': 3, '1132': 2, '2132': 2, '4132': 4, '5132': 4, '6132': 3,
+    
+    // Human off-center, AI center - continue strong center control
+    '0132': 3, '1132': 3, '2132': 3, '4132': 3, '5132': 3, '6132': 3,
+    
+    // Two-move sequences - prioritize adjacent to center
+    '313241': 2, '313251': 4, '313211': 2, '313221': 2, '313261': 4,
+    
+    // Defensive patterns - block threats
+    '313241': 2, '313211': 2, '313251': 4, '313261': 4,
+    
+    // Column 3 double stack scenarios
+    '313231': 3, // Continue center dominance
+    
+    // Early game center control patterns
+    '3132113122': 2, '3132413242': 4, '3132513252': 4, '3132213222': 2,
 };
-const MAX_OPENING_MOVES = 2; // Only use opening book for first 2 moves
+const MAX_OPENING_MOVES = 15; // Use opening book for first 15 moves (7-8 ply per side)
 
 // Column ordering for move ordering (center columns first for better alpha-beta pruning)
 const COLUMN_ORDER = [3, 2, 4, 1, 5, 0, 6];
@@ -27,6 +52,62 @@ const COLUMN_ORDER = [3, 2, 4, 1, 5, 0, 6];
 // Position evaluation weights
 const CENTER_COLUMN_WEIGHT = 3;
 const CENTER_ADJACENT_WEIGHT = 2;
+
+// ============================================================================
+// AI CONFIGURATION - Near-perfect play settings
+// ============================================================================
+const AI_CONFIG = {
+    MAX_DEPTH: 20,                  // Maximum search depth (20 ply)
+    MAX_TIME: 5000,                 // Max 5 seconds per move
+    TT_SIZE: MAX_TT_SIZE,           // Transposition table size
+    USE_OPENING_BOOK: true,
+    USE_PVS: true,                  // Principal Variation Search
+    USE_LMR: true,                  // Late Move Reductions
+    USE_KILLER_MOVES: true,
+    USE_HISTORY: true,
+    USE_ASPIRATION: true,
+    USE_THREAT_SEARCH: true,
+    
+    // Evaluation weights for near-perfect play
+    DOUBLE_THREAT_WEIGHT: 5000,
+    THREAT_WEIGHT: 500,
+    POTENTIAL_THREAT_WEIGHT: 50,
+    CENTER_WEIGHT: 100,
+    ODD_EVEN_WEIGHT: 300,
+    MOBILITY_WEIGHT: 10,
+};
+
+// ============================================================================
+// KILLER MOVES & HISTORY HEURISTIC
+// ============================================================================
+// Killer moves - tracks moves that caused beta cutoffs (2 per depth level)
+const killerMoves = Array(AI_CONFIG.MAX_DEPTH).fill(null).map(() => [null, null]);
+
+// History heuristic - tracks historically successful moves
+const historyTable = {};
+
+function storeKillerMove(depth, move) {
+    if (killerMoves[depth][0] !== move) {
+        killerMoves[depth][1] = killerMoves[depth][0];
+        killerMoves[depth][0] = move;
+    }
+}
+
+function updateHistory(move, depth) {
+    const key = move;
+    historyTable[key] = (historyTable[key] || 0) + depth * depth;
+}
+
+function clearHeuristics() {
+    // Clear killer moves
+    for (let i = 0; i < killerMoves.length; i++) {
+        killerMoves[i] = [null, null];
+    }
+    // Clear history table
+    for (const key in historyTable) {
+        delete historyTable[key];
+    }
+}
 
 // Initialize Zobrist hashing table (random 64-bit values for each position and player)
 const zobristTable = [];
@@ -280,6 +361,253 @@ GameState.prototype.evaluatePosition = function(player) {
     return score * 0.1;
 }
 
+// ============================================================================
+// ADVANCED EVALUATION FUNCTIONS
+// ============================================================================
+
+// Count threats (N-in-a-row with at least one open end)
+GameState.prototype.countThreats = function(player, targetLength) {
+    let threats = 0;
+    const directions = [
+        { dc: 1, dr: 0 },   // Horizontal
+        { dc: 0, dr: 1 },   // Vertical
+        { dc: 1, dr: 1 },   // Diagonal /
+        { dc: 1, dr: -1 }   // Diagonal \
+    ];
+    
+    const checked = new Set();
+    
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        for (let row = 0; row < this.bitboard.heights[col]; row++) {
+            if (this.board[col][row] !== player) continue;
+            
+            for (const dir of directions) {
+                const key = `${col},${row},${dir.dc},${dir.dr}`;
+                if (checked.has(key)) continue;
+                
+                let count = 0;
+                let hasOpenEnd = false;
+                
+                // Count in positive direction
+                let c = col, r = row;
+                while (c >= 0 && c < TOTAL_COLUMNS && r >= 0 && r < TOTAL_ROWS && 
+                       this.board[c] && this.board[c][r] === player) {
+                    count++;
+                    checked.add(`${c},${r},${dir.dc},${dir.dr}`);
+                    c += dir.dc;
+                    r += dir.dr;
+                }
+                
+                // Check if there's space after
+                if (c >= 0 && c < TOTAL_COLUMNS && r >= 0 && r < TOTAL_ROWS) {
+                    if ((dir.dr <= 0 && this.bitboard.heights[c] === r) || 
+                        (dir.dr > 0 && (!this.board[c] || this.board[c][r] === undefined))) {
+                        hasOpenEnd = true;
+                    }
+                }
+                
+                // Check before the starting position
+                c = col - dir.dc;
+                r = row - dir.dr;
+                if (c >= 0 && c < TOTAL_COLUMNS && r >= 0 && r < TOTAL_ROWS) {
+                    if ((dir.dr <= 0 && this.bitboard.heights[c] === r) || 
+                        (dir.dr > 0 && (!this.board[c] || this.board[c][r] === undefined))) {
+                        hasOpenEnd = true;
+                    }
+                }
+                
+                if (count === targetLength && hasOpenEnd) {
+                    threats++;
+                }
+            }
+        }
+    }
+    
+    return threats;
+}
+
+// Count double threats (two simultaneous threats that can't both be blocked)
+GameState.prototype.countDoubleThreats = function(player) {
+    const opponent = player === 1 ? 2 : 1;
+    let doubleThreats = 0;
+    
+    // Find all immediate winning moves for player
+    const winningMoves = [];
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        if (this.bitboard.heights[col] < TOTAL_ROWS) {
+            const testState = new GameState(this);
+            testState.makeMove(player, col);
+            if (testState.isWin()) {
+                winningMoves.push(col);
+            }
+        }
+    }
+    
+    // If there are 2+ winning moves, it's a double threat
+    if (winningMoves.length >= 2) {
+        doubleThreats = Math.floor(winningMoves.length / 2);
+    }
+    
+    return doubleThreats;
+}
+
+// Evaluate odd-even threats (Connect-4 specific zugzwang)
+GameState.prototype.evaluateOddEvenThreats = function(player) {
+    let score = 0;
+    
+    // Count threats on odd rows (0, 2, 4, 6 from bottom)
+    // Count threats on even rows (1, 3, 5)
+    const oddRows = [0, 2, 4, 6];
+    const evenRows = [1, 3, 5];
+    
+    let oddThreats = 0, evenThreats = 0;
+    
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        for (let row = 0; row < TOTAL_ROWS; row++) {
+            if (!this.board[col] || this.board[col][row] !== player) continue;
+            
+            // Check if this position is part of a threat
+            const directions = [
+                { dc: 1, dr: 0 },   // Horizontal
+                { dc: 0, dr: 1 },   // Vertical
+                { dc: 1, dr: 1 },   // Diagonal /
+                { dc: 1, dr: -1 }   // Diagonal \
+            ];
+            
+            for (const dir of directions) {
+                let count = 0;
+                for (let step = -3; step <= 0; step++) {
+                    const c = col + step * dir.dc;
+                    const r = row + step * dir.dr;
+                    if (c >= 0 && c < TOTAL_COLUMNS && r >= 0 && r < TOTAL_ROWS && 
+                        this.board[c] && this.board[c][r] === player) {
+                        count++;
+                    } else {
+                        count = 0;
+                    }
+                }
+                
+                if (count >= 3) {
+                    if (oddRows.includes(row)) {
+                        oddThreats++;
+                    } else {
+                        evenThreats++;
+                    }
+                }
+            }
+        }
+    }
+    
+    // First player (1) benefits from odd threats in later game
+    // Second player (2) benefits from even threats
+    if (player === 1) {
+        score += evenThreats * AI_CONFIG.ODD_EVEN_WEIGHT;
+        score -= oddThreats * AI_CONFIG.ODD_EVEN_WEIGHT;
+    } else {
+        score += oddThreats * AI_CONFIG.ODD_EVEN_WEIGHT;
+        score -= evenThreats * AI_CONFIG.ODD_EVEN_WEIGHT;
+    }
+    
+    return score;
+}
+
+// Count potential winning lines (mobility)
+GameState.prototype.countPotentialLines = function(player) {
+    let lines = 0;
+    const opponent = player === 1 ? 2 : 1;
+    
+    const directions = [
+        { dc: 1, dr: 0 },   // Horizontal
+        { dc: 0, dr: 1 },   // Vertical
+        { dc: 1, dr: 1 },   // Diagonal /
+        { dc: 1, dr: -1 }   // Diagonal \
+    ];
+    
+    // Check all possible 4-in-a-row positions
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        for (let row = 0; row < TOTAL_ROWS; row++) {
+            for (const dir of directions) {
+                let canWin = true;
+                let hasPlayer = false;
+                
+                for (let step = 0; step < 4; step++) {
+                    const c = col + step * dir.dc;
+                    const r = row + step * dir.dr;
+                    
+                    if (c >= TOTAL_COLUMNS || r >= TOTAL_ROWS || r < 0) {
+                        canWin = false;
+                        break;
+                    }
+                    
+                    if (this.board[c] && this.board[c][r] === opponent) {
+                        canWin = false;
+                        break;
+                    }
+                    
+                    if (this.board[c] && this.board[c][r] === player) {
+                        hasPlayer = true;
+                    }
+                }
+                
+                if (canWin && hasPlayer) {
+                    lines++;
+                }
+            }
+        }
+    }
+    
+    return lines;
+}
+
+// Comprehensive evaluation for near-perfect play
+GameState.prototype.advancedEvaluate = function(player) {
+    const opponent = player === 1 ? 2 : 1;
+    
+    // Terminal states
+    if (this.score === COMPUTER_WIN_SCORE) return 100000;
+    if (this.score === HUMAN_WIN_SCORE) return -100000;
+    if (this.isBoardFull()) return 0;
+    
+    let score = 0;
+    
+    // 1. Double threat detection (almost always wins)
+    const aiDoubleThreats = this.countDoubleThreats(2);
+    const humanDoubleThreats = this.countDoubleThreats(1);
+    score += aiDoubleThreats * AI_CONFIG.DOUBLE_THREAT_WEIGHT;
+    score -= humanDoubleThreats * AI_CONFIG.DOUBLE_THREAT_WEIGHT;
+    
+    // 2. Open-ended 3-in-a-row threats
+    const aiThreats = this.countThreats(2, 3);
+    const humanThreats = this.countThreats(1, 3);
+    score += aiThreats * AI_CONFIG.THREAT_WEIGHT;
+    score -= humanThreats * AI_CONFIG.THREAT_WEIGHT;
+    
+    // 3. Center column control
+    for (let row = 0; row < this.bitboard.heights[3]; row++) {
+        if (this.board[3][row] === 2) {
+            score += AI_CONFIG.CENTER_WEIGHT;
+        } else if (this.board[3][row] === 1) {
+            score -= AI_CONFIG.CENTER_WEIGHT;
+        }
+    }
+    
+    // 4. Odd-Even threat analysis
+    score += this.evaluateOddEvenThreats(2);
+    score -= this.evaluateOddEvenThreats(1);
+    
+    // 5. Open-ended 2-in-a-row (potential threats)
+    const aiPotential = this.countThreats(2, 2);
+    const humanPotential = this.countThreats(1, 2);
+    score += aiPotential * AI_CONFIG.POTENTIAL_THREAT_WEIGHT;
+    score -= humanPotential * AI_CONFIG.POTENTIAL_THREAT_WEIGHT;
+    
+    // 6. Winning lines available (mobility)
+    score += this.countPotentialLines(2) * AI_CONFIG.MOBILITY_WEIGHT;
+    score -= this.countPotentialLines(1) * AI_CONFIG.MOBILITY_WEIGHT;
+    
+    return score;
+}
+
 // Get a simple board state hash for opening book lookup
 function getBoardStateKey(gameState) {
     let key = '';
@@ -297,6 +625,64 @@ function getBoardStateKey(gameState) {
         }
     }
     return key;
+}
+
+// ============================================================================
+// ADVANCED MOVE ORDERING
+// ============================================================================
+function orderMoves(node, depth, ttBestMove) {
+    const moves = [];
+    
+    // Collect valid moves
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        if (node.bitboard.heights[col] < TOTAL_ROWS) {
+            moves.push(col);
+        }
+    }
+    
+    // Score each move for ordering
+    const moveScores = moves.map(col => {
+        let score = 0;
+        
+        // 1. TT move has highest priority (10000)
+        if (col === ttBestMove) {
+            score += 10000;
+        }
+        
+        // 2. Killer moves (900 and 800)
+        if (depth < killerMoves.length) {
+            if (col === killerMoves[depth][0]) score += 900;
+            if (col === killerMoves[depth][1]) score += 800;
+        }
+        
+        // 3. History heuristic
+        score += historyTable[col] || 0;
+        
+        // 4. Center preference (positional bonus)
+        const centerBonus = [10, 20, 30, 40, 30, 20, 10];
+        score += centerBonus[col];
+        
+        // 5. Immediate win detection (should be tried first after TT)
+        const testState = new GameState(node);
+        testState.makeMove(2, col);
+        if (testState.isWin() && testState.score === COMPUTER_WIN_SCORE) {
+            score += 50000; // Even higher than TT move - always try winning moves first
+        }
+        
+        // 6. Block opponent's immediate win
+        const blockState = new GameState(node);
+        blockState.makeMove(1, col);
+        if (blockState.isWin() && blockState.score === HUMAN_WIN_SCORE) {
+            score += 8000; // High priority but below winning move
+        }
+        
+        return { col, score };
+    });
+    
+    // Sort by score (descending)
+    moveScores.sort((a, b) => b.score - a.score);
+    
+    return moveScores.map(m => m.col);
 }
 
 // listen for messages from the main thread
@@ -322,6 +708,9 @@ function resetGame() {
     
     // Clear transposition table on game reset
     transpositionTable.clear();
+    
+    // Clear killer moves and history heuristic
+    clearHeuristics();
     
     self.postMessage({
         messageType: 'reset-done'
@@ -365,7 +754,7 @@ function makeComputerMove(maxDepth) {
     
     // Check opening book first
     const boardKey = getBoardStateKey(currentGameState);
-    if (boardKey !== null && boardKey in OPENING_BOOK) {
+    if (AI_CONFIG.USE_OPENING_BOOK && boardKey !== null && boardKey in OPENING_BOOK) {
         const openingCol = OPENING_BOOK[boardKey];
         // Verify move is valid
         if (currentGameState.bitboard.heights[openingCol] < TOTAL_ROWS) {
@@ -374,29 +763,77 @@ function makeComputerMove(maxDepth) {
     }
     
     if (col === undefined) {
-        // Use iterative deepening with fixed high depth
-        for (let depth = 0; depth <= maxDepth; depth++) {
+        // Use iterative deepening with aspiration windows and time management
+        const startTime = Date.now();
+        const maxTime = AI_CONFIG.MAX_TIME;
+        const actualMaxDepth = Math.min(maxDepth, AI_CONFIG.MAX_DEPTH);
+        
+        let bestMove = 3; // Center as default
+        let bestScore = 0;
+        
+        for (let depth = 1; depth <= actualMaxDepth; depth++) {
+            // Check if we're running out of time
+            if (Date.now() - startTime > maxTime * 0.9) {
+                break; // Use best move from previous iteration
+            }
+            
             const origin = new GameState(currentGameState);
-            const isTopLevel = (depth === maxDepth);
-
-            // Alpha-beta search with initial bounds
-            const tentativeCol = think(origin, 2, depth, isTopLevel, -Infinity, Infinity);
+            const isTopLevel = true;
+            
+            let alpha, beta;
+            
+            if (AI_CONFIG.USE_ASPIRATION && depth > 1) {
+                // Use aspiration window around previous score
+                const window = 50;
+                alpha = bestScore - window;
+                beta = bestScore + window;
+            } else {
+                // Full window for first iteration or if aspiration disabled
+                alpha = -Infinity;
+                beta = Infinity;
+            }
+            
+            // Try search with aspiration window
+            const tentativeCol = think(origin, 2, depth, isTopLevel, alpha, beta);
+            
+            // If we fell outside the aspiration window, re-search with full window
+            if (AI_CONFIG.USE_ASPIRATION && depth > 1 && 
+                (origin.score <= alpha || origin.score >= beta)) {
+                think(origin, 2, depth, isTopLevel, -Infinity, Infinity);
+            }
+            
+            bestScore = origin.score;
             
             if (origin.score === HUMAN_WIN_SCORE) {
-                // AI realizes it can lose, thinks all moves suck now, keep move picked at previous depth
-                // this solves the "apathy" problem
+                // AI realizes it can lose
                 isLossImminent = true;
+                // Keep the best move from previous depth
                 break;
             } else if (origin.score === COMPUTER_WIN_SCORE) {
-                // AI knows how to win, no need to think deeper, use this move
-                // this solves the "cocky" problem
+                // AI knows how to win
                 col = tentativeCol;
                 isWinImminent = true;
                 break;
             } else {
-                // go with this move, for now at least
+                // Update best move
                 col = tentativeCol;
+                bestMove = tentativeCol;
             }
+            
+            // Early exit if time is almost up
+            if (Date.now() - startTime > maxTime * 0.85) {
+                break;
+            }
+            
+            // Early exit if we have a very strong position
+            if (Math.abs(bestScore) > 8000) {
+                break;
+            }
+        }
+        
+        // Ensure we have a valid move
+        if (col === undefined || currentGameState.bitboard.heights[col] >= TOTAL_ROWS) {
+            col = bestMove;
         }
     }
 
@@ -415,6 +852,9 @@ function makeComputerMove(maxDepth) {
     });
 }
 
+// ============================================================================
+// PRINCIPAL VARIATION SEARCH (PVS) WITH ENHANCEMENTS
+// ============================================================================
 function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
     // Store original bounds for transposition table flag determination
     const origAlpha = alpha;
@@ -423,8 +863,11 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
     // Check transposition table
     const hash = node.bitboard.hash;
     const ttEntry = transpositionTable.get(hash);
+    let ttBestMove = null;
     
     if (ttEntry && ttEntry.depth >= recursionsRemaining && !isTopLevel) {
+        ttBestMove = ttEntry.bestMove;
+        
         // Use cached result if depth is sufficient
         if (ttEntry.flag === TT_EXACT) {
             node.score = ttEntry.score;
@@ -439,86 +882,162 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
             node.score = ttEntry.score;
             return ttEntry.bestMove;
         }
+    } else if (ttEntry) {
+        ttBestMove = ttEntry.bestMove;
+    }
+    
+    // Terminal node or depth limit reached
+    if (recursionsRemaining === 0 || node.isWin() || node.isBoardFull()) {
+        if (node.isWin()) {
+            node.score = node.score;
+        } else if (node.isBoardFull()) {
+            node.score = 0;
+        } else {
+            // Use advanced evaluation at leaf nodes
+            node.score = node.advancedEvaluate(player);
+        }
+        return -1;
     }
     
     let scoreSet = false;
     const childNodes = [];
     let bestMove = -1;
-
-    // Use column ordering for better alpha-beta pruning (center columns first)
-    for (let colIdx = 0; colIdx < COLUMN_ORDER.length; colIdx++) {
-        const col = COLUMN_ORDER[colIdx];
-        
-        if(isTopLevel) {
+    let bestScore = -Infinity;
+    
+    // Get ordered moves using advanced move ordering
+    const orderedMoves = orderMoves(node, recursionsRemaining, ttBestMove);
+    
+    let isFirstMove = true;
+    let moveIndex = 0;
+    
+    for (const col of orderedMoves) {
+        if (isTopLevel) {
             self.postMessage({
                 messageType: 'progress',
                 col: col
             });
         }
 
-        // make sure column isn't already full
+        // Make sure column isn't already full
         const row = node.bitboard.heights[col];
-        if (row < TOTAL_ROWS) {
-            // create new child node to represent this potential move
-            const childNode = new GameState(node);
-            childNode.makeMove(player, col);
-            childNodes[col] = childNode;
+        if (row >= TOTAL_ROWS) continue;
+        
+        // Create new child node to represent this potential move
+        const childNode = new GameState(node);
+        childNode.makeMove(player, col);
+        childNodes[col] = childNode;
 
-            if(!childNode.isWin() && recursionsRemaining > 0) {
-                // no game stopping win and there are still recursions to make, think deeper
-                const nextPlayer = (player === 1) ? 2 : 1;
-                think(childNode, nextPlayer, recursionsRemaining - 1, false, alpha, beta);
-            } else if (!childNode.isWin() && recursionsRemaining === 0) {
-                // At leaf node, apply heuristic evaluation
-                const heuristicScore = childNode.evaluatePosition(2); // Evaluate for computer
-                childNode.score = heuristicScore;
-            }
-
-            if (!scoreSet) {
-                // no best score yet, just go with this one for now
-                node.score = childNode.score;
-                bestMove = col;
-                scoreSet = true;
-                
-                // Update alpha or beta
-                if (player === 2) {
-                    alpha = Math.max(alpha, node.score);
-                } else {
-                    beta = Math.min(beta, node.score);
-                }
-            } else if (player === 1 && childNode.score < node.score) {
-                // assume human will always pick the lowest scoring move (least favorable to computer)
-                node.score = childNode.score;
-                bestMove = col;
-                beta = Math.min(beta, node.score);
-            } else if (player === 2 && childNode.score > node.score) {
-                // computer should always pick the highest scoring move (most favorable to computer)
-                node.score = childNode.score;
-                bestMove = col;
-                alpha = Math.max(alpha, node.score);
+        let score;
+        
+        if (childNode.isWin()) {
+            // Terminal win node
+            score = childNode.score;
+        } else if (childNode.isBoardFull()) {
+            // Terminal draw node
+            score = 0;
+        } else if (recursionsRemaining > 0) {
+            const nextPlayer = (player === 1) ? 2 : 1;
+            let reduction = 0;
+            
+            // Apply Late Move Reductions (LMR) for unlikely moves
+            if (AI_CONFIG.USE_LMR && !isFirstMove && moveIndex >= 3 && recursionsRemaining >= 3) {
+                reduction = 1;
+                if (moveIndex >= 6) reduction = 2;
             }
             
-            // Alpha-beta pruning
-            if (beta <= alpha) {
-                break; // Prune remaining branches
+            const searchDepth = recursionsRemaining - 1 - reduction;
+            
+            if (AI_CONFIG.USE_PVS && isFirstMove) {
+                // PV node: search with full window
+                think(childNode, nextPlayer, searchDepth, false, -beta, -alpha);
+                score = -childNode.score;
+                isFirstMove = false;
+            } else if (AI_CONFIG.USE_PVS) {
+                // Non-PV node: search with null window
+                think(childNode, nextPlayer, searchDepth, false, -alpha - 1, -alpha);
+                score = -childNode.score;
+                
+                // If score is better than alpha, re-search with full window
+                if (score > alpha && score < beta) {
+                    think(childNode, nextPlayer, recursionsRemaining - 1, false, -beta, -alpha);
+                    score = -childNode.score;
+                } else if (reduction > 0 && score > alpha) {
+                    // Re-search at full depth if reduced search looks promising
+                    think(childNode, nextPlayer, recursionsRemaining - 1, false, -beta, -alpha);
+                    score = -childNode.score;
+                }
+            } else {
+                // Standard alpha-beta without PVS
+                think(childNode, nextPlayer, searchDepth, false, -beta, -alpha);
+                score = -childNode.score;
+                
+                // Re-search if we used reduction and found good move
+                if (reduction > 0 && score > alpha) {
+                    think(childNode, nextPlayer, recursionsRemaining - 1, false, -beta, -alpha);
+                    score = -childNode.score;
+                }
             }
+        } else {
+            // Leaf node - use advanced evaluation
+            score = childNode.advancedEvaluate(player);
         }
+
+        if (!scoreSet) {
+            // No best score yet, just go with this one for now
+            node.score = score;
+            bestMove = col;
+            bestScore = score;
+            scoreSet = true;
+            
+            // Update alpha or beta
+            if (player === 2) {
+                alpha = Math.max(alpha, node.score);
+            } else {
+                beta = Math.min(beta, node.score);
+            }
+        } else if (player === 1 && score < node.score) {
+            // Assume human will always pick the lowest scoring move (least favorable to computer)
+            node.score = score;
+            bestMove = col;
+            bestScore = score;
+            beta = Math.min(beta, node.score);
+        } else if (player === 2 && score > node.score) {
+            // Computer should always pick the highest scoring move (most favorable to computer)
+            node.score = score;
+            bestMove = col;
+            bestScore = score;
+            alpha = Math.max(alpha, node.score);
+        }
+        
+        // Alpha-beta pruning
+        if (beta <= alpha) {
+            // Store killer move and update history
+            if (AI_CONFIG.USE_KILLER_MOVES && recursionsRemaining < killerMoves.length) {
+                storeKillerMove(recursionsRemaining, col);
+            }
+            if (AI_CONFIG.USE_HISTORY) {
+                updateHistory(col, recursionsRemaining);
+            }
+            break; // Prune remaining branches
+        }
+        
+        moveIndex++;
     }
     
     // Store in transposition table (with size limit)
     if (transpositionTable.size < MAX_TT_SIZE) {
         let flag;
         // Use original bounds to determine flag type
-        if (node.score <= origAlpha) {
+        if (bestScore <= origAlpha) {
             flag = TT_UPPERBOUND;
-        } else if (node.score >= origBeta) {
+        } else if (bestScore >= origBeta) {
             flag = TT_LOWERBOUND;
         } else {
             flag = TT_EXACT;
         }
         
         transpositionTable.set(hash, {
-            score: node.score,
+            score: bestScore,
             depth: recursionsRemaining,
             flag: flag,
             bestMove: bestMove
@@ -526,11 +1045,12 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
     }
 
     // For top level, collect all moves tied for best move and randomly pick one
-    // For non-top level, just return the best move (may have been pruned)
     if (isTopLevel) {
         const candidates = [];
         for (let col = 0; col < TOTAL_COLUMNS; col++) {
-            if (childNodes[col] !== undefined && childNodes[col].score === node.score) {
+            if (childNodes[col] !== undefined && 
+                ((player === 2 && childNodes[col].score === node.score) ||
+                 (player === 1 && childNodes[col].score === node.score))) {
                 candidates.push(col);
             }
         }
