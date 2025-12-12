@@ -680,6 +680,8 @@ h2 {
         width: 100%;
         max-width: 428px;
         height: auto;
+        /* aspect-ratio is supported in modern browsers (Chrome 88+, Firefox 89+, Safari 15+) */
+        /* For older browsers, fixed dimensions are used via the default 428px x 428px */
         aspect-ratio: 1;
     }
     
