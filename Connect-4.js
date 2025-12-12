@@ -62,8 +62,8 @@ const OPENING_BOOK = {
     '2122': 2,       // Block column 2 stack
     '5152': 5,       // Block column 5 stack
     
-    // Human stacks center - AI must contest by stacking on same column
-    '3132': 3,       // AI contests center column (not cooperating, competing for control)
+    // Human stacks center - AI contests by stacking same column
+    '3132': 3,       // Contest center column
     '313231': 3,     // Continue center control
     '31323132': 3,   // Keep stacking center
 };
@@ -1235,7 +1235,7 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
         });
     }
 
-    // For top level, collect all moves tied for best move and use deterministic tie-breaking
+    // For top level, collect all moves tied for best score and use center-preference tie-breaking
     if (isTopLevel) {
         const candidates = [];
         for (let col = 0; col < TOTAL_COLUMNS; col++) {

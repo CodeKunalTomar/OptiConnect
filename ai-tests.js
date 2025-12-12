@@ -140,7 +140,7 @@ const AI_TESTS = [
         ],
         expectedMove: 4,
         mustBlock: true,
-        description: "AI must detect and block vertical threat on column 4 (center-adjacent column). This tests the fix for blind spots on non-edge columns."
+        description: "Tests vertical threat detection on center-adjacent column"
     },
     {
         name: "AI blocks column 3 (center) vertical stack",
