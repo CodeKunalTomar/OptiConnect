@@ -537,7 +537,8 @@ h2 {
     z-index: 2000;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.3s ease;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .modal {
@@ -679,14 +680,13 @@ h2 {
     .board {
         width: 100%;
         max-width: 428px;
-        height: 428px; /* Fallback for browsers without aspect-ratio support */
-        /* aspect-ratio is supported in modern browsers (Chrome 88+, Firefox 89+, Safari 15+) */
-        aspect-ratio: 1;
+        height: 428px; /* Fallback for older browsers */
+        aspect-ratio: 1; /* Widely supported in modern browsers */
     }
     
     @supports (aspect-ratio: 1) {
         .board {
-            height: auto; /* Let aspect-ratio control height in supporting browsers */
+            height: auto;
         }
     }
     

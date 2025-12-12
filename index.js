@@ -94,7 +94,12 @@ $(function() {
         openModal('how-to-play-modal');
     });
     
-    $('.modal-close, .modal-overlay').on('click', function(e) {
+    // Modal close handlers
+    $('.modal-close').on('click', function() {
+        closeModal('how-to-play-modal');
+    });
+    
+    $('.modal-overlay').on('click', function(e) {
         if (e.target === this) {
             closeModal('how-to-play-modal');
         }
@@ -549,12 +554,14 @@ function updateThemeButton(theme) {
 // Modal functions
 function openModal(modalId) {
     const $modal = $('#' + modalId);
-    $modal.css('display', 'flex').fadeIn(300);
+    $modal.css('display', 'flex');
+    // Use setTimeout to ensure display is set before opacity transition
+    setTimeout(() => $modal.css('opacity', '1'), 10);
 }
 
 function closeModal(modalId) {
-    $('#' + modalId).fadeOut(300, function() {
-        $(this).css('display', 'none');
-    });
+    const $modal = $('#' + modalId);
+    $modal.css('opacity', '0');
+    setTimeout(() => $modal.css('display', 'none'), 300);
 }
 }
