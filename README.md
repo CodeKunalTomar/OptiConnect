@@ -18,7 +18,7 @@
 ---
 ## I. Abstract
 
-OptiConnect is a challenging, browser-based Connect-4 experience featuring **two game modes** (VS AI and Two-Player) with **chess-style cumulative timers** and an **ultimate near-perfect AI** that achieves approximately **97-98% win rate**
+OptiConnect is a challenging, browser-based Connect-4 experience featuring **two game modes** (VS AI and Two-Player) with **chess-style cumulative timers** and an **ultimate near-perfect AI** that achieves approximately **97-98% win rate**.
 
 The game features:
 - **Two Game Modes**: Challenge the Ultimate AI or play against a friend locally with Two-Player mode
