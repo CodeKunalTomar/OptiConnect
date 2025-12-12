@@ -1240,8 +1240,8 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
         const candidates = [];
         for (let col = 0; col < TOTAL_COLUMNS; col++) {
             if (childNodes[col] !== undefined && 
-                ((player === 2 && childNodes[col].score === node.score) ||
-                 (player === 1 && childNodes[col].score === node.score))) {
+                ((player === 2 && childNodes[col].score === bestScore) ||
+                 (player === 1 && childNodes[col].score === bestScore))) {
                 candidates.push(col);
             }
         }
