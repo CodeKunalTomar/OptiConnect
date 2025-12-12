@@ -579,17 +579,22 @@ GameState.prototype.detectEdgeThreats = function(player) {
     for (const col of edgeCols) {
         const height = this.bitboard.heights[col];
         
-        // Check vertical stacking
+        // Check vertical stacking - count consecutive pieces from the top
         if (height >= 2) {
             let consecutive = 0;
+            let maxConsecutive = 0;
+            
             for (let row = 0; row < height; row++) {
                 if (this.board[col][row] === player) {
                     consecutive++;
+                    maxConsecutive = Math.max(maxConsecutive, consecutive);
                 } else {
                     consecutive = 0;
                 }
             }
-            if (consecutive >= 2 && height < TOTAL_ROWS) {
+            
+            // Threat if there are 2+ consecutive pieces and room to grow
+            if (maxConsecutive >= 2 && height < TOTAL_ROWS) {
                 threats++;
             }
         }
@@ -721,8 +726,8 @@ function orderMoves(node, depth, ttBestMove) {
         const centerBonus = [5, 10, 15, 20, 15, 10, 5];
         score += centerBonus[col];
         
-        // 7. Threat prevention evaluation (detect edge and corner threats early)
-        score += evaluateThreatPrevention(node, col);
+        // 7. Threat prevention evaluation (reuse states to optimize performance)
+        score += evaluateThreatPrevention(node, col, blockState, testState);
         
         return { col, score };
     });
@@ -737,31 +742,38 @@ function orderMoves(node, depth, ttBestMove) {
 // THREAT PREVENTION EVALUATION
 // ============================================================================
 // Evaluate how important it is to play in this column to prevent opponent threats
-function evaluateThreatPrevention(node, col) {
+// This is a lighter-weight version that reuses states already created in orderMoves
+function evaluateThreatPrevention(node, col, blockState, testState) {
     let score = 0;
     const row = node.bitboard.heights[col];
     if (row >= TOTAL_ROWS) return 0;
     
-    // Simulate opponent playing here
-    const testState = new GameState(node);
-    testState.makeMove(1, col); // Human moves here
+    // Reuse blockState if provided, otherwise create it
+    if (!blockState) {
+        blockState = new GameState(node);
+        blockState.makeMove(1, col); // Human moves here
+    }
     
     // Check if this creates a 3-in-a-row threat for opponent
-    const threatsAfter = testState.countThreats(1, 3);
+    const threatsAfter = blockState.countThreats(1, 3);
     if (threatsAfter > 0) {
         score += 3000 * threatsAfter;
     }
     
     // Check for potential double-threat setup
-    const doubleThreatsAfter = testState.countDoubleThreats(1);
+    const doubleThreatsAfter = blockState.countDoubleThreats(1);
     if (doubleThreatsAfter > 0) {
         score += 7000;
     }
     
+    // Reuse testState if provided, otherwise create it
+    if (!testState) {
+        testState = new GameState(node);
+        testState.makeMove(2, col);
+    }
+    
     // Also reward moves that create threats for AI
-    const aiTestState = new GameState(node);
-    aiTestState.makeMove(2, col);
-    const aiThreats = aiTestState.countThreats(2, 3);
+    const aiThreats = testState.countThreats(2, 3);
     if (aiThreats > 0) {
         score += 2000 * aiThreats;
     }
