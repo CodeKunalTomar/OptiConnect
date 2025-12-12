@@ -564,4 +564,3 @@ function closeModal(modalId) {
     $modal.css('opacity', '0');
     setTimeout(() => $modal.css('display', 'none'), 300);
 }
-}
