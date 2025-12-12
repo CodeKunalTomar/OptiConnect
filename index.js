@@ -68,9 +68,9 @@ const OUTLOOKS = {
 };
 
 // Timer constants
-const TOTAL_TIME = 120; // 2 minutes in seconds
-const WARNING_TIME = 30; // Yellow/orange warning
-const CRITICAL_TIME = 10; // Red critical warning
+const TOTAL_TIME = 15; // 15 seconds per move
+const WARNING_TIME = 8; // Yellow/orange warning
+const CRITICAL_TIME = 5; // Red critical warning
 
 // global variables
 const worker = new Worker(WEB_WORKER_URL);
@@ -83,6 +83,28 @@ let gameMode = 'ai'; // 'ai' or '2player'
 
 // document ready
 $(function() {
+    // Initialize theme first
+    initTheme();
+    
+    // Theme toggle handler
+    $('.theme-toggle').on('click', toggleTheme);
+    
+    // How to Play modal handlers
+    $('.how-to-play-btn').on('click', function() {
+        openModal('how-to-play-modal');
+    });
+    
+    // Modal close handlers
+    $('.modal-close').on('click', function() {
+        closeModal('how-to-play-modal');
+    });
+    
+    $('.modal-overlay').on('click', function(e) {
+        if (e.target === this) {
+            closeModal('how-to-play-modal');
+        }
+    });
+    
     // Mode selection handlers
     $('.mode-btn').on('click', function() {
         $('.mode-btn').removeClass('selected');
@@ -502,4 +524,43 @@ function dropCursorChip(row, callback) {
 
 function indexToPixels(index) {
     return (index * 61 + 1) + 'px';
+}
+
+// Theme functions
+function initTheme() {
+    const saved = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = saved || (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+    updateThemeButton(theme);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeButton(next);
+}
+
+function updateThemeButton(theme) {
+    const button = $('.theme-toggle');
+    if (button.length) {
+        button.text(theme === 'dark' ? '☀️' : '🌙');
+        button.attr('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+}
+
+// Modal functions
+function openModal(modalId) {
+    const $modal = $('#' + modalId);
+    $modal.css('display', 'flex');
+    // Use setTimeout to ensure display is set before opacity transition
+    setTimeout(() => $modal.css('opacity', '1'), 10);
+}
+
+function closeModal(modalId) {
+    const $modal = $('#' + modalId);
+    $modal.css('opacity', '0');
+    setTimeout(() => $modal.css('display', 'none'), 300);
 }
