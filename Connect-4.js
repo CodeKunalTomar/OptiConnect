@@ -62,8 +62,8 @@ const OPENING_BOOK = {
     '2122': 2,       // Block column 2 stack
     '5152': 5,       // Block column 5 stack
     
-    // Human stacks center - MUST respond
-    '3132': 3,       // Stack center with them
+    // Human stacks center - AI must contest by stacking on same column
+    '3132': 3,       // AI contests center column (not cooperating, competing for control)
     '313231': 3,     // Continue center control
     '31323132': 3,   // Keep stacking center
 };
@@ -678,8 +678,8 @@ GameState.prototype.advancedEvaluate = function(player) {
     // 7. Vertical threat detection (ALL columns, not just edges)
     const aiVerticalThreats = this.detectVerticalThreats(2);
     const humanVerticalThreats = this.detectVerticalThreats(1);
-    score += aiVerticalThreats * 800;
-    score -= humanVerticalThreats * 1200; // Weight human threats higher (defensive priority)
+    score += aiVerticalThreats * AI_CONFIG.VERTICAL_THREAT_WEIGHT;
+    score -= humanVerticalThreats * (AI_CONFIG.VERTICAL_THREAT_WEIGHT * 1.5); // Weight human threats higher (defensive priority)
     
     return score;
 }
