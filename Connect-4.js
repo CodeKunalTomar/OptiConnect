@@ -81,6 +81,7 @@ const CENTER_ADJACENT_WEIGHT = 2;
 // ============================================================================
 const AI_CONFIG = {
     MAX_DEPTH: 20,                  // Maximum search depth (20 ply)
+    MIN_DEPTH: 12,                  // Minimum search depth (12 ply)
     MAX_TIME: 5000,                 // Max 5 seconds per move
     TT_SIZE: MAX_TT_SIZE,           // Transposition table size
     USE_OPENING_BOOK: true,
@@ -934,8 +935,7 @@ function makeComputerMove(maxDepth) {
         // Use iterative deepening with aspiration windows and time management
         const startTime = Date.now();
         const maxTime = AI_CONFIG.MAX_TIME;
-        const MIN_SEARCH_DEPTH = 12;
-        const actualMaxDepth = Math.max(MIN_SEARCH_DEPTH, Math.min(maxDepth, AI_CONFIG.MAX_DEPTH));
+        const actualMaxDepth = Math.max(AI_CONFIG.MIN_DEPTH, Math.min(maxDepth, AI_CONFIG.MAX_DEPTH));
         
         let bestMove = 3; // Center as default
         let bestScore = 0;
