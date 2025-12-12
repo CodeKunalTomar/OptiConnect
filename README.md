@@ -286,7 +286,51 @@ This implementation now includes **10 advanced AI techniques** that create near-
 | **Research Platform** | Design a plug-and-play AI module interface, add an analytics dashboard            | 📝 **Planned** |
 
 ---
-## X. License and Citation
+## X. AI Testing & Robustness
+
+### Bug Fix: Edge/Corner Blind Spot (v2.0)
+A critical vulnerability was identified where the AI over-prioritized center positions and failed to respond to edge column threats. This has been fixed with:
+- **Rebalanced move ordering priorities**: Winning moves (100,000), blocking moves (90,000), TT moves (5,000), and reduced center bonus ([5, 10, 15, 20, 15, 10, 5])
+- **New threat prevention evaluation**: Detects 3-in-a-row threats and double-threat setups before they become critical
+- **Edge threat detection system**: Specifically monitors columns 0, 1, 5, and 6 for vertical stacking threats
+- **Expanded opening book for edge defense**: Pre-computed responses to edge and corner opening strategies
+
+### Running Tests
+The AI includes a comprehensive test suite in `ai-tests.js`:
+```javascript
+// In browser console (after loading Connect-4.js and ai-tests.js):
+runAITests();
+```
+
+Test categories:
+- ✅ Immediate win detection (horizontal, vertical, diagonal)
+- ✅ Immediate block detection (all directions)  
+- ✅ Edge/corner threat response (columns 0, 1, 5, 6)
+- ✅ Double threat creation and blocking
+- ✅ Win vs block priority
+- ✅ Strategic opening moves
+
+### Example Bug Scenario (Now Fixed)
+**Before Fix:**
+```
+Turn 1: Human plays column 0 (corner)
+Turn 2: AI plays column 3 (center) - IGNORING the threat
+Turn 3: Human plays column 0 (stacks corner)
+Turn 4: AI plays column 3 (center) - STILL IGNORING
+Turn 5: Human plays column 0 (3 in a row!)
+Turn 6: AI finally notices but it's too late
+```
+
+**After Fix:**
+```
+Turn 1: Human plays column 0 (corner)
+Turn 2: AI plays column 3 (center)
+Turn 3: Human plays column 0 (stacks corner)
+Turn 4: AI plays column 0 or 1 - BLOCKING the edge threat!
+```
+
+---
+## XI. License and Citation
 This project is licensed under the **MIT License**, granting broad permissions for academic, personal, and commercial use.
 
 

@@ -43,6 +43,18 @@ const OPENING_BOOK = {
     
     // Early game center control patterns
     '3132113122': 2, '3132413242': 4, '3132513252': 4, '3132213222': 2,
+    
+    // Edge defense - Human opens on column 0
+    '0131': 0,       // Contest the edge!
+    '013101': 0,     // Continue contesting
+    
+    // Edge defense - Human opens on column 6  
+    '6131': 6,       // Contest the edge!
+    '613161': 6,     // Continue contesting
+    
+    // Block 3-stacks on edges
+    '010111': 0,     // Block left edge 3-stack
+    '616161': 6,     // Block right edge 3-stack
 };
 const MAX_OPENING_MOVES = 15; // Use opening book for first 15 moves (7-8 ply per side)
 
@@ -559,6 +571,33 @@ GameState.prototype.countPotentialLines = function(player) {
     return lines;
 }
 
+// Detect threats building on edges (columns 0, 1, 5, 6)
+GameState.prototype.detectEdgeThreats = function(player) {
+    let threats = 0;
+    const edgeCols = [0, 1, 5, 6];
+    
+    for (const col of edgeCols) {
+        const height = this.bitboard.heights[col];
+        
+        // Check vertical stacking
+        if (height >= 2) {
+            let consecutive = 0;
+            for (let row = 0; row < height; row++) {
+                if (this.board[col][row] === player) {
+                    consecutive++;
+                } else {
+                    consecutive = 0;
+                }
+            }
+            if (consecutive >= 2 && height < TOTAL_ROWS) {
+                threats++;
+            }
+        }
+    }
+    
+    return threats;
+};
+
 // Comprehensive evaluation for near-perfect play
 GameState.prototype.advancedEvaluate = function(player) {
     const opponent = player === 1 ? 2 : 1;
@@ -605,6 +644,12 @@ GameState.prototype.advancedEvaluate = function(player) {
     score += this.countPotentialLines(2) * AI_CONFIG.MOBILITY_WEIGHT;
     score -= this.countPotentialLines(1) * AI_CONFIG.MOBILITY_WEIGHT;
     
+    // 7. Edge threat detection
+    const aiEdgeThreats = this.detectEdgeThreats(2);
+    const humanEdgeThreats = this.detectEdgeThreats(1);
+    score += aiEdgeThreats * 400;
+    score -= humanEdgeThreats * 600; // Weight human edge threats higher (defensive)
+    
     return score;
 }
 
@@ -644,37 +689,40 @@ function orderMoves(node, depth, ttBestMove) {
     const moveScores = moves.map(col => {
         let score = 0;
         
-        // 1. TT move has highest priority (10000)
-        if (col === ttBestMove) {
-            score += 10000;
+        // 1. Immediate win detection (HIGHEST PRIORITY - always try winning moves first)
+        const testState = new GameState(node);
+        testState.makeMove(2, col);
+        if (testState.isWin() && testState.score === COMPUTER_WIN_SCORE) {
+            score += 100000;
         }
         
-        // 2. Killer moves (900 and 800)
+        // 2. Block opponent's immediate win (CRITICAL - must block threats)
+        const blockState = new GameState(node);
+        blockState.makeMove(1, col);
+        if (blockState.isWin() && blockState.score === HUMAN_WIN_SCORE) {
+            score += 90000;
+        }
+        
+        // 3. TT move (good move from previous search)
+        if (col === ttBestMove) {
+            score += 5000;
+        }
+        
+        // 4. Killer moves (900 and 800)
         if (depth < killerMoves.length) {
             if (col === killerMoves[depth][0]) score += 900;
             if (col === killerMoves[depth][1]) score += 800;
         }
         
-        // 3. History heuristic
+        // 5. History heuristic
         score += historyTable[col] || 0;
         
-        // 4. Center preference (positional bonus)
-        const centerBonus = [10, 20, 30, 40, 30, 20, 10];
+        // 6. Center preference (reduced bonus to avoid over-prioritization)
+        const centerBonus = [5, 10, 15, 20, 15, 10, 5];
         score += centerBonus[col];
         
-        // 5. Immediate win detection (should be tried first after TT)
-        const testState = new GameState(node);
-        testState.makeMove(2, col);
-        if (testState.isWin() && testState.score === COMPUTER_WIN_SCORE) {
-            score += 50000; // Even higher than TT move - always try winning moves first
-        }
-        
-        // 6. Block opponent's immediate win
-        const blockState = new GameState(node);
-        blockState.makeMove(1, col);
-        if (blockState.isWin() && blockState.score === HUMAN_WIN_SCORE) {
-            score += 8000; // High priority but below winning move
-        }
+        // 7. Threat prevention evaluation (detect edge and corner threats early)
+        score += evaluateThreatPrevention(node, col);
         
         return { col, score };
     });
@@ -683,6 +731,42 @@ function orderMoves(node, depth, ttBestMove) {
     moveScores.sort((a, b) => b.score - a.score);
     
     return moveScores.map(m => m.col);
+}
+
+// ============================================================================
+// THREAT PREVENTION EVALUATION
+// ============================================================================
+// Evaluate how important it is to play in this column to prevent opponent threats
+function evaluateThreatPrevention(node, col) {
+    let score = 0;
+    const row = node.bitboard.heights[col];
+    if (row >= TOTAL_ROWS) return 0;
+    
+    // Simulate opponent playing here
+    const testState = new GameState(node);
+    testState.makeMove(1, col); // Human moves here
+    
+    // Check if this creates a 3-in-a-row threat for opponent
+    const threatsAfter = testState.countThreats(1, 3);
+    if (threatsAfter > 0) {
+        score += 3000 * threatsAfter;
+    }
+    
+    // Check for potential double-threat setup
+    const doubleThreatsAfter = testState.countDoubleThreats(1);
+    if (doubleThreatsAfter > 0) {
+        score += 7000;
+    }
+    
+    // Also reward moves that create threats for AI
+    const aiTestState = new GameState(node);
+    aiTestState.makeMove(2, col);
+    const aiThreats = aiTestState.countThreats(2, 3);
+    if (aiThreats > 0) {
+        score += 2000 * aiThreats;
+    }
+    
+    return score;
 }
 
 // listen for messages from the main thread
