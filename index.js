@@ -547,9 +547,13 @@ function updateThemeButton(theme) {
 
 // Modal functions
 function openModal(modalId) {
-    $('#' + modalId).css('display', 'flex').hide().fadeIn(300);
+    const $modal = $('#' + modalId);
+    $modal.css('display', 'flex').fadeIn(300);
 }
 
 function closeModal(modalId) {
-    $('#' + modalId).fadeOut(300);
+    $('#' + modalId).fadeOut(300, function() {
+        $(this).css('display', 'none');
+    });
+}
 }
