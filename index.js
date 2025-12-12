@@ -542,6 +542,7 @@ function updateThemeButton(theme) {
     const button = $('.theme-toggle');
     if (button.length) {
         button.text(theme === 'dark' ? '☀️' : '🌙');
+        button.attr('aria-pressed', theme === 'dark' ? 'true' : 'false');
     }
 }
 

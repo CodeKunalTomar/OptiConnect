@@ -12,8 +12,8 @@
     <nav class="navbar">
         <div class="nav-brand">Connect-4</div>
         <div class="nav-actions">
-            <button class="how-to-play-btn">How to Play</button>
-            <button class="theme-toggle">🌙</button>
+            <button class="how-to-play-btn" aria-haspopup="dialog">How to Play</button>
+            <button class="theme-toggle" aria-label="Toggle dark/light theme" aria-pressed="true">🌙</button>
         </div>
     </nav>
     <div class = "wrapper">
@@ -85,9 +85,9 @@
     
     <!-- How to Play Modal -->
     <div class="modal-overlay" id="how-to-play-modal">
-        <div class="modal">
-            <button class="modal-close">&times;</button>
-            <h2>How to Play Connect-4</h2>
+        <div class="modal" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+            <button class="modal-close" aria-label="Close dialog">&times;</button>
+            <h2 id="modal-title">How to Play Connect-4</h2>
             <div class="modal-content">
                 <h3>🎯 Objective</h3>
                 <p>Connect 4 chips in a row to win! You can connect horizontally, vertically, or diagonally.</p>
