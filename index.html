@@ -2,11 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connect-4</title>
-    <link href="https://fonts.googleapis.com/css?family=Doppio+One" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="Connect-4.css">
 </head>
 <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">Connect-4</div>
+        <div class="nav-actions">
+            <button class="how-to-play-btn">How to Play</button>
+            <button class="theme-toggle">🌙</button>
+        </div>
+    </nav>
     <div class = "wrapper">
         <div class = "content">
             <div class = "sidebar">
@@ -16,11 +25,11 @@
                 <div class = "panel timer-panel" style="display: none;">
                     <div class = "timer timer-p1" id = "player-timer">
                         <div class = "timer-label">YOU</div>
-                        <div class = "timer-value">2:00</div>
+                        <div class = "timer-value">0:15</div>
                     </div>
                     <div class = "timer timer-p2" id = "ai-timer">
                         <div class = "timer-label">AI</div>
-                        <div class = "timer-value">2:00</div>
+                        <div class = "timer-value">0:15</div>
                     </div>
                 </div>
                 
@@ -73,6 +82,44 @@
             </div>
         </div>
     </div>
+    
+    <!-- How to Play Modal -->
+    <div class="modal-overlay" id="how-to-play-modal">
+        <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h2>How to Play Connect-4</h2>
+            <div class="modal-content">
+                <h3>🎯 Objective</h3>
+                <p>Connect 4 chips in a row to win! You can connect horizontally, vertically, or diagonally.</p>
+                
+                <h3>⏱️ Timer Rules</h3>
+                <p>Each player has <strong>15 seconds per move</strong>. Make your move before time runs out!</p>
+                <ul>
+                    <li>⚪ Normal: You have plenty of time</li>
+                    <li>🟡 Warning: Less than 8 seconds remaining</li>
+                    <li>🔴 Critical: Less than 5 seconds - hurry!</li>
+                </ul>
+                
+                <h3>🎮 Game Modes</h3>
+                <p><strong>VS AI:</strong> Challenge the ultimate AI opponent with near-perfect play</p>
+                <p><strong>2 Player:</strong> Play against a friend on the same device</p>
+                
+                <h3>💡 Tips</h3>
+                <ul>
+                    <li>Control the center columns for more winning opportunities</li>
+                    <li>Always block your opponent's winning moves</li>
+                    <li>Plan ahead - look for ways to create multiple threats at once</li>
+                    <li>Watch the timer and think quickly!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Designed & Developed by <strong>Kunal Tomar</strong></p>
+    </footer>
+    
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script src="index.js"></script>
 </body>
