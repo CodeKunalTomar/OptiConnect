@@ -679,10 +679,15 @@ h2 {
     .board {
         width: 100%;
         max-width: 428px;
-        height: auto;
+        height: 428px; /* Fallback for browsers without aspect-ratio support */
         /* aspect-ratio is supported in modern browsers (Chrome 88+, Firefox 89+, Safari 15+) */
-        /* For older browsers, fixed dimensions are used via the default 428px x 428px */
         aspect-ratio: 1;
+    }
+    
+    @supports (aspect-ratio: 1) {
+        .board {
+            height: auto; /* Let aspect-ratio control height in supporting browsers */
+        }
     }
     
     .modal {
