@@ -1,6 +1,7 @@
 # Test files
 test-*.html
 test-*.js
+validate-changes.js
 
 # macOS
 .DS_Store
