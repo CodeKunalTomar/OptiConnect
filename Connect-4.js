@@ -1,8 +1,8 @@
 // constants
 const TOTAL_COLUMNS = 7;
 const TOTAL_ROWS = 7;
-const HUMAN_WIN_SCORE = -4;
-const COMPUTER_WIN_SCORE = 4;
+const HUMAN_WIN_SCORE = -1000000;
+const COMPUTER_WIN_SCORE = 1000000;
 const NO_WIN_SCORE = 0;
 
 // Transposition Table constants
@@ -55,6 +55,17 @@ const OPENING_BOOK = {
     // Block 3-stacks on edges
     '010111': 0,     // Block left edge 3-stack
     '616161': 6,     // Block right edge 3-stack
+    
+    // Vertical stacking defense (any column)
+    '4142': 4,       // Block column 4 stack
+    '414241': 4,     // Continue blocking column 4
+    '2122': 2,       // Block column 2 stack
+    '5152': 5,       // Block column 5 stack
+    
+    // Human stacks center - AI contests by stacking same column
+    '3132': 3,       // Contest center column
+    '313231': 3,     // Continue center control
+    '31323132': 3,   // Keep stacking center
 };
 const MAX_OPENING_MOVES = 15; // Use opening book for first 15 moves (7-8 ply per side)
 
@@ -70,6 +81,7 @@ const CENTER_ADJACENT_WEIGHT = 2;
 // ============================================================================
 const AI_CONFIG = {
     MAX_DEPTH: 20,                  // Maximum search depth (20 ply)
+    MIN_DEPTH: 12,                  // Minimum search depth (12 ply)
     MAX_TIME: 5000,                 // Max 5 seconds per move
     TT_SIZE: MAX_TT_SIZE,           // Transposition table size
     USE_OPENING_BOOK: true,
@@ -81,12 +93,13 @@ const AI_CONFIG = {
     USE_THREAT_SEARCH: true,
     
     // Evaluation weights for near-perfect play
-    DOUBLE_THREAT_WEIGHT: 5000,
-    THREAT_WEIGHT: 500,
-    POTENTIAL_THREAT_WEIGHT: 50,
-    CENTER_WEIGHT: 100,
-    ODD_EVEN_WEIGHT: 300,
-    MOBILITY_WEIGHT: 10,
+    DOUBLE_THREAT_WEIGHT: 50000,
+    THREAT_WEIGHT: 5000,
+    POTENTIAL_THREAT_WEIGHT: 500,
+    CENTER_WEIGHT: 200,
+    ODD_EVEN_WEIGHT: 600,
+    MOBILITY_WEIGHT: 20,
+    VERTICAL_THREAT_WEIGHT: 1500,
 };
 
 // ============================================================================
@@ -310,6 +323,20 @@ GameState.prototype.setScore = function(player, col, row) {
 
 GameState.prototype.isWin = function() {
     return (this.score === HUMAN_WIN_SCORE || this.score === COMPUTER_WIN_SCORE);
+}
+
+// Helper function to check if a score indicates a win, accounting for depth bonus
+function isWinScore(score) {
+    return score >= COMPUTER_WIN_SCORE - AI_CONFIG.MAX_DEPTH || 
+           score <= HUMAN_WIN_SCORE + AI_CONFIG.MAX_DEPTH;
+}
+
+function isComputerWinScore(score) {
+    return score >= COMPUTER_WIN_SCORE - AI_CONFIG.MAX_DEPTH;
+}
+
+function isHumanWinScore(score) {
+    return score <= HUMAN_WIN_SCORE + AI_CONFIG.MAX_DEPTH;
 }
 
 // Keep legacy methods for backward compatibility if needed
@@ -571,31 +598,30 @@ GameState.prototype.countPotentialLines = function(player) {
     return lines;
 }
 
-// Detect threats building on edges (columns 0, 1, 5, 6)
-GameState.prototype.detectEdgeThreats = function(player) {
+// Detect vertical stacking threats on ANY column
+GameState.prototype.detectVerticalThreats = function(player) {
     let threats = 0;
-    const edgeCols = [0, 1, 5, 6];
     
-    for (const col of edgeCols) {
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
         const height = this.bitboard.heights[col];
+        if (height < 2 || height >= TOTAL_ROWS) continue;
         
-        // Check vertical stacking - count consecutive pieces from the top
-        if (height >= 2) {
-            let consecutive = 0;
-            let maxConsecutive = 0;
-            
-            for (let row = 0; row < height; row++) {
-                if (this.board[col][row] === player) {
-                    consecutive++;
-                    maxConsecutive = Math.max(maxConsecutive, consecutive);
-                } else {
-                    consecutive = 0;
-                }
+        // Count consecutive pieces from top of stack
+        let consecutive = 0;
+        for (let row = height - 1; row >= 0; row--) {
+            if (this.board[col][row] === player) {
+                consecutive++;
+            } else {
+                break; // Stop at first non-player piece
             }
-            
-            // Threat if there are 2+ consecutive pieces and room to grow
-            if (maxConsecutive >= 2 && height < TOTAL_ROWS) {
-                threats++;
+        }
+        
+        // Threat if 2+ consecutive at top with room to grow
+        if (consecutive >= 2) {
+            threats++;
+            // Extra threat for 3 in a row (one move from winning)
+            if (consecutive >= 3) {
+                threats += 2;
             }
         }
     }
@@ -608,8 +634,8 @@ GameState.prototype.advancedEvaluate = function(player) {
     const opponent = player === 1 ? 2 : 1;
     
     // Terminal states
-    if (this.score === COMPUTER_WIN_SCORE) return 100000;
-    if (this.score === HUMAN_WIN_SCORE) return -100000;
+    if (this.score === COMPUTER_WIN_SCORE) return COMPUTER_WIN_SCORE;
+    if (this.score === HUMAN_WIN_SCORE) return HUMAN_WIN_SCORE;
     if (this.isBoardFull()) return 0;
     
     let score = 0;
@@ -649,11 +675,11 @@ GameState.prototype.advancedEvaluate = function(player) {
     score += this.countPotentialLines(2) * AI_CONFIG.MOBILITY_WEIGHT;
     score -= this.countPotentialLines(1) * AI_CONFIG.MOBILITY_WEIGHT;
     
-    // 7. Edge threat detection
-    const aiEdgeThreats = this.detectEdgeThreats(2);
-    const humanEdgeThreats = this.detectEdgeThreats(1);
-    score += aiEdgeThreats * 400;
-    score -= humanEdgeThreats * 600; // Weight human edge threats higher (defensive)
+    // 7. Vertical threat detection (ALL columns, not just edges)
+    const aiVerticalThreats = this.detectVerticalThreats(2);
+    const humanVerticalThreats = this.detectVerticalThreats(1);
+    score += aiVerticalThreats * AI_CONFIG.VERTICAL_THREAT_WEIGHT;
+    score -= humanVerticalThreats * (AI_CONFIG.VERTICAL_THREAT_WEIGHT * 1.5); // Weight human threats higher (defensive priority)
     
     return score;
 }
@@ -843,18 +869,79 @@ function makePlayer2Move(col) {
     });
 }
 
+// Check for forced moves (instant wins or required blocks)
+function getForcedMove(gameState) {
+    const validMoves = [];
+    const winningMoves = [];
+    const blockingMoves = [];
+    
+    for (let col = 0; col < TOTAL_COLUMNS; col++) {
+        if (gameState.bitboard.heights[col] >= TOTAL_ROWS) continue;
+        validMoves.push(col);
+        
+        // Check if AI can win immediately
+        const winTest = new GameState(gameState);
+        winTest.makeMove(2, col);
+        if (winTest.isWin()) {
+            winningMoves.push(col);
+        }
+        
+        // Check if human would win if they play here
+        const blockTest = new GameState(gameState);
+        blockTest.makeMove(1, col);
+        if (blockTest.isWin()) {
+            blockingMoves.push(col);
+        }
+    }
+    
+    // Priority 1: Take immediate win
+    if (winningMoves.length > 0) {
+        return { col: winningMoves[0], type: 'win' };
+    }
+    
+    // Priority 2: Block immediate threat (if only one blocking move)
+    if (blockingMoves.length === 1) {
+        return { col: blockingMoves[0], type: 'block' };
+    }
+    
+    // Priority 3: Multiple threats = losing position, but still must block one
+    if (blockingMoves.length > 1) {
+        return { col: blockingMoves[0], type: 'desperate-block' };
+    }
+    
+    // Priority 4: Only one valid move
+    if (validMoves.length === 1) {
+        return { col: validMoves[0], type: 'only-move' };
+    }
+    
+    return null; // No forced move, use search
+}
+
 function makeComputerMove(maxDepth) {
     let col;
     let isWinImminent = false;
     let isLossImminent = false;
     
-    // Check opening book first
-    const boardKey = getBoardStateKey(currentGameState);
-    if (AI_CONFIG.USE_OPENING_BOOK && boardKey !== null && boardKey in OPENING_BOOK) {
-        const openingCol = OPENING_BOOK[boardKey];
-        // Verify move is valid
-        if (currentGameState.bitboard.heights[openingCol] < TOTAL_ROWS) {
-            col = openingCol;
+    // Check for forced moves FIRST (before opening book)
+    const forcedMove = getForcedMove(currentGameState);
+    if (forcedMove) {
+        col = forcedMove.col;
+        if (forcedMove.type === 'win') {
+            isWinImminent = true;
+        } else if (forcedMove.type === 'desperate-block') {
+            isLossImminent = true;
+        }
+    }
+    
+    // Then check opening book (only if no forced move)
+    if (col === undefined) {
+        const boardKey = getBoardStateKey(currentGameState);
+        if (AI_CONFIG.USE_OPENING_BOOK && boardKey !== null && boardKey in OPENING_BOOK) {
+            const openingCol = OPENING_BOOK[boardKey];
+            // Verify move is valid
+            if (currentGameState.bitboard.heights[openingCol] < TOTAL_ROWS) {
+                col = openingCol;
+            }
         }
     }
     
@@ -862,7 +949,7 @@ function makeComputerMove(maxDepth) {
         // Use iterative deepening with aspiration windows and time management
         const startTime = Date.now();
         const maxTime = AI_CONFIG.MAX_TIME;
-        const actualMaxDepth = Math.min(maxDepth, AI_CONFIG.MAX_DEPTH);
+        const actualMaxDepth = Math.max(AI_CONFIG.MIN_DEPTH, Math.min(maxDepth, AI_CONFIG.MAX_DEPTH));
         
         let bestMove = 3; // Center as default
         let bestScore = 0;
@@ -900,12 +987,13 @@ function makeComputerMove(maxDepth) {
             
             bestScore = origin.score;
             
-            if (origin.score === HUMAN_WIN_SCORE) {
+            // Check for win/loss using helper functions that account for depth bonuses
+            if (isHumanWinScore(origin.score)) {
                 // AI realizes it can lose
                 isLossImminent = true;
                 // Keep the best move from previous depth
                 break;
-            } else if (origin.score === COMPUTER_WIN_SCORE) {
+            } else if (isComputerWinScore(origin.score)) {
                 // AI knows how to win
                 col = tentativeCol;
                 isWinImminent = true;
@@ -922,7 +1010,7 @@ function makeComputerMove(maxDepth) {
             }
             
             // Early exit if we have a very strong position
-            if (Math.abs(bestScore) > 8000) {
+            if (Math.abs(bestScore) > 50000) {
                 break;
             }
         }
@@ -1027,7 +1115,14 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
         
         if (childNode.isWin()) {
             // Terminal win node
+            // Properly handle win scores relative to current player
             score = childNode.score;
+            // Add depth bonus - prefer faster wins, delay losses
+            if (score === COMPUTER_WIN_SCORE) {
+                score = score - recursionsRemaining; // Prefer faster AI wins
+            } else if (score === HUMAN_WIN_SCORE) {
+                score = score + recursionsRemaining; // Prefer slower human wins (delay loss)
+            }
         } else if (childNode.isBoardFull()) {
             // Terminal draw node
             score = 0;
@@ -1140,17 +1235,24 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
         });
     }
 
-    // For top level, collect all moves tied for best move and randomly pick one
+    // For top level, collect all moves tied for best score and use center-preference tie-breaking
     if (isTopLevel) {
         const candidates = [];
         for (let col = 0; col < TOTAL_COLUMNS; col++) {
             if (childNodes[col] !== undefined && 
-                ((player === 2 && childNodes[col].score === node.score) ||
-                 (player === 1 && childNodes[col].score === node.score))) {
+                ((player === 2 && childNodes[col].score === bestScore) ||
+                 (player === 1 && childNodes[col].score === bestScore))) {
                 candidates.push(col);
             }
         }
-        return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : bestMove;
+        // Deterministic tie-breaking - prefer center columns
+        if (candidates.length > 0) {
+            const preference = [3, 2, 4, 1, 5, 0, 6];
+            for (const col of preference) {
+                if (candidates.includes(col)) return col;
+            }
+        }
+        return bestMove;
     }
     
     return bestMove;

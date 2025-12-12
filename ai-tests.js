@@ -129,6 +129,41 @@ const AI_TESTS = [
         setup: [{ player: 1, col: 3 }],
         shouldConsider: [2, 3, 4],
     },
+    
+    // Center Column Vertical Threat Detection (Bug from screenshot)
+    {
+        name: "AI blocks column 4 (center-adjacent) vertical stack",
+        setup: [
+            { player: 1, col: 4 }, { player: 2, col: 3 },
+            { player: 1, col: 4 }, { player: 2, col: 3 },
+            { player: 1, col: 4 },
+        ],
+        expectedMove: 4,
+        mustBlock: true,
+        description: "Tests vertical threat detection on center-adjacent column"
+    },
+    {
+        name: "AI blocks column 3 (center) vertical stack",
+        setup: [
+            { player: 1, col: 3 }, { player: 2, col: 2 },
+            { player: 1, col: 3 }, { player: 2, col: 2 },
+            { player: 1, col: 3 },
+        ],
+        expectedMove: 3,
+        mustBlock: true,
+        description: "AI must block vertical threat on center column"
+    },
+    {
+        name: "AI blocks column 2 vertical stack",
+        setup: [
+            { player: 1, col: 2 }, { player: 2, col: 3 },
+            { player: 1, col: 2 }, { player: 2, col: 3 },
+            { player: 1, col: 2 },
+        ],
+        expectedMove: 2,
+        mustBlock: true,
+        description: "AI must block vertical threat on column 2"
+    },
 ];
 
 // Test runner
