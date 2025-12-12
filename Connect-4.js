@@ -325,6 +325,20 @@ GameState.prototype.isWin = function() {
     return (this.score === HUMAN_WIN_SCORE || this.score === COMPUTER_WIN_SCORE);
 }
 
+// Helper function to check if a score indicates a win, accounting for depth bonus
+function isWinScore(score) {
+    return score >= COMPUTER_WIN_SCORE - AI_CONFIG.MAX_DEPTH || 
+           score <= HUMAN_WIN_SCORE + AI_CONFIG.MAX_DEPTH;
+}
+
+function isComputerWinScore(score) {
+    return score >= COMPUTER_WIN_SCORE - AI_CONFIG.MAX_DEPTH;
+}
+
+function isHumanWinScore(score) {
+    return score <= HUMAN_WIN_SCORE + AI_CONFIG.MAX_DEPTH;
+}
+
 // Keep legacy methods for backward compatibility if needed
 GameState.prototype.checkRuns = function(player, col, row, colStep, rowStep) {
     let runCount = 0;
@@ -973,12 +987,13 @@ function makeComputerMove(maxDepth) {
             
             bestScore = origin.score;
             
-            if (origin.score === HUMAN_WIN_SCORE) {
+            // Check for win/loss using helper functions that account for depth bonuses
+            if (isHumanWinScore(origin.score)) {
                 // AI realizes it can lose
                 isLossImminent = true;
                 // Keep the best move from previous depth
                 break;
-            } else if (origin.score === COMPUTER_WIN_SCORE) {
+            } else if (isComputerWinScore(origin.score)) {
                 // AI knows how to win
                 col = tentativeCol;
                 isWinImminent = true;
