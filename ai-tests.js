@@ -161,7 +161,8 @@ const AI_TESTS = [
             { player: 1, col: 2 },
         ],
         expectedMove: 2,
-        mustBlock: true
+        mustBlock: true,
+        description: "AI must block vertical threat on column 2"
     },
 ];
 

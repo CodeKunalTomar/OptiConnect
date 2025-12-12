@@ -1103,9 +1103,9 @@ function think(node, player, recursionsRemaining, isTopLevel, alpha, beta) {
             // Properly handle win scores relative to current player
             score = childNode.score;
             // Add depth bonus - prefer faster wins, delay losses
-            if (score > 0) {
+            if (score === COMPUTER_WIN_SCORE) {
                 score = score - recursionsRemaining; // Prefer faster AI wins
-            } else {
+            } else if (score === HUMAN_WIN_SCORE) {
                 score = score + recursionsRemaining; // Prefer slower human wins (delay loss)
             }
         } else if (childNode.isBoardFull()) {
