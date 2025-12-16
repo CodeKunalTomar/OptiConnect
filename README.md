@@ -1,7 +1,7 @@
 <h1 align="center">OptiConnect: Connect-4 AI with Non-Blocking Web UI</h1>
 
 <p align="center">
-  <strong>An Advanced Browser-Based Connect-4 Engine with a Non-Blocking Minimax AI, and Web Worker Architectur</strong>
+  <strong>An Advanced Browser-Based Connect-4 Engine with a Non-Blocking Minimax AI, and Web Worker Architecture</strong>
 </p>
 
 <p align="center">
