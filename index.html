@@ -1,65 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connect-4</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Doppio+One" rel="stylesheet">
     <link rel="stylesheet" href="Connect-4.css">
 </head>
+
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-brand">Connect-4</div>
-        <div class="nav-actions">
-            <button class="how-to-play-btn" aria-haspopup="dialog">How to Play</button>
-            <button class="theme-toggle" aria-label="Toggle dark/light theme">🌙</button>
-        </div>
-    </nav>
-    <div class = "wrapper">
-        <div class = "content">
-            <div class = "sidebar">
+    <div class="wrapper">
+        <div class="content">
+            <div class="sidebar">
                 <h1>Connect-4</h1>
-                
-                <!-- Timer Panel (shown during game) -->
-                <div class = "panel timer-panel" style="display: none;">
-                    <div class = "timer timer-p1" id = "player-timer">
-                        <div class = "timer-label">YOU</div>
-                        <div class = "timer-value">0:15</div>
-                    </div>
-                    <div class = "timer timer-p2" id = "ai-timer">
-                        <div class = "timer-label">AI</div>
-                        <div class = "timer-value">0:15</div>
-                    </div>
-                </div>
-                
-                <!-- Game Setup Panel (shown before game) -->
-                <div class = "panel setup-panel">
-                    <h2>Game Mode</h2>
-                    <div class = "mode-select">
-                        <button class = "mode-btn selected" data-mode="ai">
-                            <span class = "icon">🤖</span>
-                            <span>VS AI</span>
-                        </button>
-                        <button class = "mode-btn" data-mode="2player">
-                            <span class = "icon">👥</span>
-                            <span>2 Player</span>
-                        </button>
+                <div class="panel mode">
+                    <h2> Game Mode </h2>
+                    <div class="mode-options">
+                        <div>
+                            <input id="mode-ai" type="radio" name="mode-options" value="ai" checked>
+                            <label for="mode-ai"> vs AI </label>
+                        </div>
+                        <div>
+                            <input id="mode-2p" type="radio" name="mode-options" value="2p">
+                            <label for="mode-2p"> 2 Player </label>
+                        </div>
                     </div>
                 </div>
-                
-                <div class = "panel start-panel">
-                    <button class = "start-button"> Start Game </button>
+                <div class="panel dif">
+                    <h2> Difficulty </h2>
+                    <div class="dif-options">
+                        <div>
+                            <input id="dif1" type="radio" name="dif-options" value="1">
+                            <label for="dif1"> 1 </label>
+                        </div>
+                        <div>
+                            <input id="dif2" type="radio" name="dif-options" value="2">
+                            <label for="dif2"> 2 </label>
+                        </div>
+                        <div>
+                            <input id="dif3" type="radio" name="dif-options" value="3" checked>
+                            <label for="dif3"> 3 </label>
+                        </div>
+                        <div>
+                            <input id="dif4" type="radio" name="dif-options" value="4">
+                            <label for="dif4"> 4 </label>
+                        </div>
+                        <div>
+                            <input id="dif5" type="radio" name="dif-options" value="5">
+                            <label for="dif5"> 5 </label>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class = "panel info">
+                <div class="start">
+                    <button> Start Game </button>
+                </div>
+                <div class="panel info">
                     <h2></h2>
-                    <div class = "blurb"></div>
-                    <div class = "outlook"></div>
+                    <div class="blurb"></div>
+                    <div class="timer-container">
+                        <div class="timer-label">Time Left</div>
+                        <div class="timer-display">10</div>
+                        <div class="timer-bar">
+                            <div class="timer-fill"></div>
+                        </div>
+                    </div>
+                    <div class="outlook"></div>
                 </div>
             </div>
-            <div class = "board">
-                <div class = "lit-columns">
+            <div class="board">
+                <div class="lit-columns">
                     <div></div>
                     <div></div>
                     <div></div>
@@ -68,9 +77,9 @@
                     <div></div>
                     <div></div>
                 </div>
-                <div class = "lit-cells"></div>
-                <div class = "chips"></div>
-                <div class = "click-columns">
+                <div class="lit-cells"></div>
+                <div class="chips"></div>
+                <div class="click-columns">
                     <div></div>
                     <div></div>
                     <div></div>
@@ -82,45 +91,8 @@
             </div>
         </div>
     </div>
-    
-    <!-- How to Play Modal -->
-    <div class="modal-overlay" id="how-to-play-modal">
-        <div class="modal" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-            <button class="modal-close" aria-label="Close dialog">&times;</button>
-            <h2 id="modal-title">How to Play Connect-4</h2>
-            <div class="modal-content">
-                <h3>🎯 Objective</h3>
-                <p>Connect 4 chips in a row to win! You can connect horizontally, vertically, or diagonally.</p>
-                
-                <h3>⏱️ Timer Rules</h3>
-                <p>Each player has <strong>15 seconds per move</strong>. Make your move before time runs out!</p>
-                <ul>
-                    <li>⚪ Normal: You have plenty of time</li>
-                    <li>🟡 Warning: Less than 8 seconds remaining</li>
-                    <li>🔴 Critical: Less than 5 seconds - hurry!</li>
-                </ul>
-                
-                <h3>🎮 Game Modes</h3>
-                <p><strong>VS AI:</strong> Challenge the ultimate AI opponent with near-perfect play</p>
-                <p><strong>2 Player:</strong> Play against a friend on the same device</p>
-                
-                <h3>💡 Tips</h3>
-                <ul>
-                    <li>Control the center columns for more winning opportunities</li>
-                    <li>Always block your opponent's winning moves</li>
-                    <li>Plan ahead - look for ways to create multiple threats at once</li>
-                    <li>Watch the timer and think quickly!</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Footer -->
-    <footer class="footer">
-        <p>Designed & Developed by <strong>Kunal Tomar</strong></p>
-    </footer>
-    
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script src="index.js"></script>
 </body>
+
 </html>
